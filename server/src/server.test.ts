@@ -1,7 +1,9 @@
+import { request } from 'node:http';
+
 import { describe, expect, it } from 'vitest';
 
 import { startServer } from './server';
-import { captureLogger, testConfig } from './testkit';
+import { captureLogger, HOST, testConfig } from './testkit';
 
 async function start(check: () => Promise<boolean>) {
   const log = captureLogger();
@@ -10,17 +12,44 @@ async function start(check: () => Promise<boolean>) {
     logger: log.logger,
     checkLedgerd: check,
   });
-  const base = `http://127.0.0.1:${String(running.address.port)}`;
-  return { running, base, log };
+  return { running, port: running.address.port, log };
+}
+
+interface Reply {
+  status: number;
+  body: string;
+}
+
+/**
+ * A plain HTTP/1.1 request with the Host a browser would send. (fetch cannot set Host, and
+ * the server is configured, as in production, to serve one host name.) One connection per
+ * request, so nothing is kept alive between tests.
+ */
+function get(port: number, path: string): Promise<Reply> {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      { host: '127.0.0.1', port, path, agent: false, headers: { Host: HOST } },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => {
+          resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString() });
+        });
+        res.on('error', reject);
+      },
+    );
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 describe('the running server', () => {
   it('serves requests over a real socket', async () => {
-    const { running, base } = await start(() => Promise.resolve(true));
+    const { running, port } = await start(() => Promise.resolve(true));
     try {
-      const response = await fetch(`${base}/healthz`);
+      const response = await get(port, '/healthz');
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ status: 'ok' });
+      expect(JSON.parse(response.body)).toEqual({ status: 'ok' });
     } finally {
       await running.close(1000);
     }
@@ -40,14 +69,14 @@ describe('the running server', () => {
     const slow = new Promise<boolean>((resolve) => {
       release = resolve;
     });
-    const { running, base } = await start(() => slow);
+    const { running, port } = await start(() => slow);
 
-    const inFlight = fetch(`${base}/readyz`); // blocks until we release the check
+    const inFlight = get(port, '/readyz'); // blocks until we release the check
     await new Promise((r) => setTimeout(r, 50));
 
     const closing = running.close(5000);
     await new Promise((r) => setTimeout(r, 50));
-    await expect(fetch(`${base}/healthz`)).rejects.toThrow(); // the listener is already closed
+    await expect(get(port, '/healthz')).rejects.toThrow(); // the listener is already closed
 
     release(true); // the slow request can now complete normally
     const response = await inFlight;
@@ -59,8 +88,8 @@ describe('the running server', () => {
   });
 
   it('cuts off requests that outlast the shutdown timeout, and says so', async () => {
-    const { running, base } = await start(() => new Promise<boolean>(() => undefined));
-    const stuck = fetch(`${base}/readyz`).then(
+    const { running, port } = await start(() => new Promise<boolean>(() => undefined));
+    const stuck = get(port, '/readyz').then(
       () => 'completed',
       () => 'cut off',
     );

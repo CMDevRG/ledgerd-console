@@ -33,7 +33,7 @@ Console tasks that need them say so.
   - Configuration with the redacted key type, JSON logging, request ids, `/healthz` and `/readyz`, graceful shutdown.
   - Verify: tests for every configuration error (the key never printed), health endpoints, shutdown with a request in flight.
   - _R2.4, R2.5, R17.5, R17.6_
-- [ ] 6. Security pipeline
+- [x] 6. Security pipeline
   - Host check, rate limit (token bucket with an injectable clock), security headers and CSP, body limit, the custom-header and Origin/`Sec-Fetch-Site` checks.
   - Verify: one hostile-request test per defence (wrong Host, cross-origin POST, POST without the header, oversized body, burst over the limit).
   - _R15.1, R15.2, R15.3, R15.5, R15.8_

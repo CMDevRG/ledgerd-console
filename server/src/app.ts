@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { randomBytes } from 'node:crypto';
 
 import type { Config } from './config';
+import { RateLimiter } from './rate-limit';
+import { crossSiteDefence, hostCheck, jsonBodyLimit, rateLimit, securityHeaders } from './security';
 import type { Logger } from './logger';
 import { problemResponse } from './problem';
 
@@ -14,13 +16,34 @@ export interface AppDeps {
   logger: Logger;
   /** Can the console server reach ledgerd and is it ready? Never throws. */
   checkLedgerd: () => Promise<boolean>;
+  /** Overrides for the request limits; the defaults are what the console ships with. */
+  limits?: Partial<Limits>;
+  /** Time source for the rate limiter (tests inject a fake clock). */
+  now?: () => number;
 }
+
+export interface Limits {
+  /** Sustained requests per second per client. */
+  ratePerSecond: number;
+  /** Requests a client may make at once. */
+  burst: number;
+  /** Largest accepted request body. */
+  maxBodyBytes: number;
+}
+
+export const DEFAULT_LIMITS: Limits = { ratePerSecond: 50, burst: 200, maxBodyBytes: 64 * 1024 };
 
 /** Only a conservative alphabet is taken from clients, so an id is safe in logs and headers. */
 const VALID_REQUEST_ID = /^[A-Za-z0-9._-]{1,64}$/;
 
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const { logger } = deps;
+  const limits = { ...DEFAULT_LIMITS, ...deps.limits };
+  const limiter = new RateLimiter({
+    ratePerSecond: limits.ratePerSecond,
+    burst: limits.burst,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const app = new Hono<AppEnv>();
 
   // 1. Every request gets an id, returned to the client and put in every log line.
@@ -47,6 +70,14 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
       duration_ms: Math.round((performance.now() - started) * 1000) / 1000,
     });
   });
+
+  // 3. Security, in this order. Headers wrap everything, so refusals carry them too.
+  app.use('*', securityHeaders());
+  app.use('*', hostCheck(deps.config.allowedHosts));
+  app.use('*', rateLimit(limiter));
+  // Everything under /api can change money, so it gets the cross-site and size defences.
+  app.use('/api/*', crossSiteDefence(deps.config.allowedOrigins));
+  app.use('/api/*', jsonBodyLimit(limits.maxBodyBytes));
 
   // The console server's own probes. They are not forwarded to ledgerd.
   app.get('/healthz', (c) => c.json({ status: 'ok' }));

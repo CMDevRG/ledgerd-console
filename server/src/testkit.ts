@@ -10,7 +10,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     apiKey: new Secret(TEST_KEY),
     host: '127.0.0.1',
     port: 0,
-    allowedHosts: ['localhost:8787', '127.0.0.1:8787', 'localhost', 'localhost:0'],
+    allowedHosts: ['localhost:8787', '127.0.0.1:8787'],
     allowedOrigins: ['http://localhost:8787', 'http://127.0.0.1:8787'],
     logLevel: 'debug',
     ...overrides,
@@ -29,4 +29,41 @@ export function captureLogger(): {
     lines: () => written.map((l) => JSON.parse(l) as Record<string, unknown>),
     raw: () => written.join('\n'),
   };
+}
+
+/** The Host header a browser would send for the console in its default configuration. */
+export const HOST = 'localhost:8787';
+
+/** What the console's own page sends with every state-changing call. */
+export const CONSOLE_HEADERS = {
+  'X-Ledgerd-Console': '1',
+  Origin: 'http://localhost:8787',
+} as const;
+
+interface Requestable {
+  request(input: string, init?: RequestInit): Response | Promise<Response>;
+}
+
+/** Sends a request to an app in-process, with the Host header a browser would add. */
+export function send(app: Requestable, path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (!headers.has('Host')) headers.set('Host', HOST);
+  return Promise.resolve(app.request(path, { ...init, headers }));
+}
+
+/**
+ * Wraps an app so that `app.request(...)` adds the Host header by default. Everything
+ * else (routes, middleware) is the real app, so tests can still register routes on it.
+ */
+export function withHost<T extends Requestable>(app: T): T {
+  return new Proxy(app, {
+    get(target, property, receiver) {
+      if (property === 'request')
+        return (path: string, init?: RequestInit) => send(target, path, init);
+      const value: unknown = Reflect.get(target, property, receiver);
+      return typeof value === 'function'
+        ? (value as (...args: unknown[]) => unknown).bind(target)
+        : value;
+    },
+  });
 }

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { createApp } from './app';
-import { captureLogger, testConfig, TEST_KEY } from './testkit';
+import { captureLogger, testConfig, TEST_KEY, withHost } from './testkit';
 
 function build(ready: () => Promise<boolean> = () => Promise.resolve(true)) {
   const log = captureLogger();
-  const app = createApp({ config: testConfig(), logger: log.logger, checkLedgerd: ready });
+  const app = withHost(
+    createApp({ config: testConfig(), logger: log.logger, checkLedgerd: ready }),
+  );
   return { app, log };
 }
 
@@ -114,11 +116,13 @@ describe('logging', () => {
 describe('unexpected failures', () => {
   it('become a generic 500; the cause is logged, never returned', async () => {
     const log = captureLogger();
-    const app = createApp({
-      config: testConfig(),
-      logger: log.logger,
-      checkLedgerd: () => Promise.resolve(true),
-    });
+    const app = withHost(
+      createApp({
+        config: testConfig(),
+        logger: log.logger,
+        checkLedgerd: () => Promise.resolve(true),
+      }),
+    );
     app.get('/boom', () => {
       throw new Error('relation "accounts" does not exist at /srv/app/db.js:42 password=hunter2');
     });
