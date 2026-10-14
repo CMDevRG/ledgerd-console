@@ -29,7 +29,7 @@ Console tasks that need them say so.
 
 ## Phase 2 — Console server
 
-- [ ] 5. Server skeleton
+- [x] 5. Server skeleton
   - Configuration with the redacted key type, JSON logging, request ids, `/healthz` and `/readyz`, graceful shutdown.
   - Verify: tests for every configuration error (the key never printed), health endpoints, shutdown with a request in flight.
   - _R2.4, R2.5, R17.5, R17.6_
