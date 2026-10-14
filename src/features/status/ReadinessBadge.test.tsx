@@ -8,20 +8,20 @@ import { ReadinessBadge } from './ReadinessBadge';
 
 describe('ReadinessBadge', () => {
   it('shows a neutral state while the first check is running', () => {
-    server.use(http.get('*/readyz', () => new Promise(() => undefined)));
+    server.use(http.get('*/api/readyz', () => new Promise(() => undefined)));
     renderWithProviders(<ReadinessBadge />);
     expect(screen.getByRole('status')).toHaveTextContent('Checking API');
   });
 
   it('shows ready when /readyz answers ready', async () => {
-    server.use(http.get('*/readyz', () => HttpResponse.json({ status: 'ready' })));
+    server.use(http.get('*/api/readyz', () => HttpResponse.json({ status: 'ready' })));
     renderWithProviders(<ReadinessBadge />);
     expect(await screen.findByText('API ready')).toBeInTheDocument();
   });
 
   it('shows not ready when the API answers with a problem document', async () => {
     server.use(
-      http.get('*/readyz', () =>
+      http.get('*/api/readyz', () =>
         HttpResponse.json(
           {
             type: 'urn:ledgerd:error:not_ready',
@@ -38,14 +38,14 @@ describe('ReadinessBadge', () => {
   });
 
   it('shows unreachable when the network fails', async () => {
-    server.use(http.get('*/readyz', () => HttpResponse.error()));
+    server.use(http.get('*/api/readyz', () => HttpResponse.error()));
     renderWithProviders(<ReadinessBadge />);
     expect(await screen.findByText('Cannot reach the API')).toBeInTheDocument();
   });
 
   it('refuses a response that does not match the documented shape', async () => {
     // A proxy or a wrong server answering 200 with something else must not look "ready".
-    server.use(http.get('*/readyz', () => HttpResponse.json({ status: 'fine, thanks' })));
+    server.use(http.get('*/api/readyz', () => HttpResponse.json({ status: 'fine, thanks' })));
     renderWithProviders(<ReadinessBadge />);
     expect(await screen.findByText('Cannot reach the API')).toBeInTheDocument();
   });

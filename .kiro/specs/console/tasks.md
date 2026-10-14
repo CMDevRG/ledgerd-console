@@ -13,7 +13,7 @@ Console tasks that need them say so.
 ## Phase 1 — Foundations
 
 - [x] 1. Repository scaffold (Vite, React, TypeScript, Tailwind, TanStack Query, Vitest, MSW, ESLint, Prettier, contract types)
-- [ ] 2. Test and build tooling
+- [x] 2. Test and build tooling
   - Add fast-check, axe-core, Hono, esbuild, tsx; split Vitest into a `client` project (jsdom) and a `server` project (node); a second `tsconfig` for the server; scripts `verify`, `coverage`.
   - Verify: `npm run verify` runs both projects.
   - _R16.1, R16.6_

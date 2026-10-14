@@ -9,7 +9,7 @@ const readySchema = z.object({ status: z.literal('ready') });
 export function useReadiness() {
   return useQuery({
     queryKey: ['readiness'],
-    queryFn: ({ signal }) => getJson('/readyz', readySchema, signal),
+    queryFn: ({ signal }) => getJson('/api/readyz', readySchema, signal),
     refetchInterval: 10_000,
     retry: false,
   });

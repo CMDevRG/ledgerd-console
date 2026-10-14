@@ -58,9 +58,9 @@ repository (release 0.2.0) before the console work that depends on it.
 
 #### Acceptance Criteria
 
-1. The console SHALL show on every page whether ledgerd is *ready*, *not ready*, or *unreachable*, using ledgerd's `/readyz`.
+1. The console SHALL show on every page whether ledgerd is _ready_, _not ready_, or _unreachable_, using ledgerd's `/readyz`.
 2. WHILE the console is open, it SHALL re-check readiness periodically (every 10 seconds) and update the indicator without a page reload.
-3. WHEN ledgerd answers with a problem document or with a body that does not match the documented shape, the console SHALL NOT show *ready*.
+3. WHEN ledgerd answers with a problem document or with a body that does not match the documented shape, the console SHALL NOT show _ready_.
 4. WHEN readiness changes, the new state SHALL be announced to assistive technology without moving focus.
 5. WHEN ledgerd is not ready or unreachable, pages that need it SHALL show a clear, non-technical explanation and a retry action instead of an empty or broken view.
 
@@ -164,7 +164,7 @@ repository (release 0.2.0) before the console work that depends on it.
 1. The Failure Lab SHALL offer these scenarios, each runnable with one action: (a) overdraft is refused and nothing changes; (b) a retried request is a replay, not a second effect; (c) the same key with a different body is refused; (d) an unbalanced transaction is refused; (e) an amount sent as a JSON number is refused; (f) amounts at 2^53+1, 2^63 and 10^30 are stored exactly, and 10^30+1 is refused; (g) a transaction cannot be reversed twice; (h) many simultaneous withdrawals against a balance succeed exactly as many times as the balance allows.
 2. Each scenario SHALL create its own lab accounts (code prefix `lab-`) so it never touches the user's other data, and SHALL show its steps in order.
 3. For each step the Lab SHALL show the request sent (method, path, body, key; never the API key) and the response received (status, headers of interest, body), plus a plain-language explanation of why that is the correct outcome.
-4. Each scenario SHALL end with a verdict, *behaved as designed* or *unexpected*, computed by comparing the observed outcome with the expected one; an unexpected outcome SHALL be shown prominently, not hidden.
+4. Each scenario SHALL end with a verdict, _behaved as designed_ or _unexpected_, computed by comparing the observed outcome with the expected one; an unexpected outcome SHALL be shown prominently, not hidden.
 5. Scenario (h) SHALL send its requests concurrently, SHALL report how many were accepted and refused and the final balance, and SHALL state that browser connection limits bound the concurrency actually achieved.
 6. The Lab SHALL warn that scenarios write real data to the connected ledger, and SHALL show how many lab accounts exist.
 7. The scenarios SHALL be implemented as pure, testable functions over an API client, so they can be exercised against a mock and against a real ledgerd.
@@ -190,7 +190,7 @@ repository (release 0.2.0) before the console work that depends on it.
 
 1. The benchmark page SHALL present the results from a versioned data file in this repository: scenarios, virtual users, transfers per second, latency percentiles (p50, p90, p95, p99), and failure rate, as a table and as charts.
 2. The page SHALL show, next to the results, the environment (hardware, operating system, container runtime, PostgreSQL version, configuration), the ledgerd commit they were measured at, and the date.
-3. The page SHALL state that the numbers come from one machine and are not guarantees, and SHALL explain in plain language the difference between the *spread* and *hot account* scenarios.
+3. The page SHALL state that the numbers come from one machine and are not guarantees, and SHALL explain in plain language the difference between the _spread_ and _hot account_ scenarios.
 4. The data file SHALL be validated against a schema at build time and at load time; an invalid file SHALL fail the build.
 5. The repository SHALL include a documented, scripted way to produce the data file from the output of ledgerd's `make bench`.
 6. Every chart SHALL have an accessible equivalent (a data table or text summary).

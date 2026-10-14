@@ -13,20 +13,20 @@ The console is three things in one repository:
 
 ### Key decisions
 
-| # | Decision | Rationale | Cost |
-|---|---|---|---|
-| D1 | A **console server** holds the API key and forwards a fixed allow-list of calls | A key in browser code is public. Same-origin forwarding also removes CORS entirely | One more process to run and secure |
-| D2 | The server is **Hono** on Node, bundled with esbuild | Tiny, typed, standard `Request`/`Response`; `app.request()` tests the whole server in-process, which makes the security tests cheap and fast | Smaller ecosystem than Express/Fastify; rate limiting and the allow-list are written by hand (about 100 lines, fully tested) |
-| D3 | **Two different checks stop cross-site abuse**: validate `Host` and `Origin`, and require a custom header on every non-`GET` | A console that holds a financial API key is reachable by any web page the user visits (CSRF, DNS rebinding). A custom header cannot be sent cross-site without a CORS preflight, which the server never grants | Every call must go through the one API client that adds the header |
-| D4 | **Money is `bigint` end to end**; amounts are strings on the wire | Same reason as ledgerd: `number` loses integers above 2^53. A lint rule forbids `parseFloat`, and property tests cover parse/format | A formatting layer is needed for display |
-| D5 | **API types are generated** from ledgerd's `openapi.yaml`; **Zod schemas** validate responses at runtime; a compile-time check ties the two together | The contract stays the single source of truth, and a wrong shape throws instead of reaching the UI | Two descriptions of each shape (checked against each other by the compiler) |
-| D6 | The **Failure Lab** is a list of pure async functions over an injected API, recording every request/response | Testable against a fake and against a real ledgerd; the UI renders the recording generically | Each scenario also needs its expected outcome written down |
-| D7 | **Charts are small custom SVG components**, not a chart library | Only bar charts of a dozen numbers are needed; a library adds weight and inline styles that the strict Content Security Policy blocks; custom components can carry their own accessible table | Less flexible than a library (acceptable here) |
-| D8 | Pages are **route-level code-split**, and state lives in the **URL** where it should be shareable | Smaller first load; an `as_of` instant or a filter can be bookmarked | Slightly more routing code |
-| D9 | **No form library**: forms are controlled components, and the transaction builder is a pure reducer | The builder logic (totals, balance check) is plain data and is property-tested; fewer dependencies | A bit of repeated field wiring (wrapped in one `Field` component) |
-| D10 | **Native `<dialog>`** for confirmations | Built-in focus trapping, Escape handling and accessibility semantics | None that matters here |
-| D11 | The console is **distributed with ledgerd's release images** (`ghcr.io/cmdevrg/ledgerd` and `ledgerd-postgres`, pinned by tag and digest) | One command can start the whole stack without building Go code or copying ledgerd's database setup | ledgerd must publish images (a ledgerd task, release 0.2.0) |
-| D12 | **Playwright** end-to-end tests run against that real stack and also produce the screenshots | The only test that proves the pieces work together, and the README images cannot go stale | Slower; needs a browser and system libraries in CI |
+| #   | Decision                                                                                                                                             | Rationale                                                                                                                                                                                                      | Cost                                                                                                                         |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| D1  | A **console server** holds the API key and forwards a fixed allow-list of calls                                                                      | A key in browser code is public. Same-origin forwarding also removes CORS entirely                                                                                                                             | One more process to run and secure                                                                                           |
+| D2  | The server is **Hono** on Node, bundled with esbuild                                                                                                 | Tiny, typed, standard `Request`/`Response`; `app.request()` tests the whole server in-process, which makes the security tests cheap and fast                                                                   | Smaller ecosystem than Express/Fastify; rate limiting and the allow-list are written by hand (about 100 lines, fully tested) |
+| D3  | **Two different checks stop cross-site abuse**: validate `Host` and `Origin`, and require a custom header on every non-`GET`                         | A console that holds a financial API key is reachable by any web page the user visits (CSRF, DNS rebinding). A custom header cannot be sent cross-site without a CORS preflight, which the server never grants | Every call must go through the one API client that adds the header                                                           |
+| D4  | **Money is `bigint` end to end**; amounts are strings on the wire                                                                                    | Same reason as ledgerd: `number` loses integers above 2^53. A lint rule forbids `parseFloat`, and property tests cover parse/format                                                                            | A formatting layer is needed for display                                                                                     |
+| D5  | **API types are generated** from ledgerd's `openapi.yaml`; **Zod schemas** validate responses at runtime; a compile-time check ties the two together | The contract stays the single source of truth, and a wrong shape throws instead of reaching the UI                                                                                                             | Two descriptions of each shape (checked against each other by the compiler)                                                  |
+| D6  | The **Failure Lab** is a list of pure async functions over an injected API, recording every request/response                                         | Testable against a fake and against a real ledgerd; the UI renders the recording generically                                                                                                                   | Each scenario also needs its expected outcome written down                                                                   |
+| D7  | **Charts are small custom SVG components**, not a chart library                                                                                      | Only bar charts of a dozen numbers are needed; a library adds weight and inline styles that the strict Content Security Policy blocks; custom components can carry their own accessible table                  | Less flexible than a library (acceptable here)                                                                               |
+| D8  | Pages are **route-level code-split**, and state lives in the **URL** where it should be shareable                                                    | Smaller first load; an `as_of` instant or a filter can be bookmarked                                                                                                                                           | Slightly more routing code                                                                                                   |
+| D9  | **No form library**: forms are controlled components, and the transaction builder is a pure reducer                                                  | The builder logic (totals, balance check) is plain data and is property-tested; fewer dependencies                                                                                                             | A bit of repeated field wiring (wrapped in one `Field` component)                                                            |
+| D10 | **Native `<dialog>`** for confirmations                                                                                                              | Built-in focus trapping, Escape handling and accessibility semantics                                                                                                                                           | None that matters here                                                                                                       |
+| D11 | The console is **distributed with ledgerd's release images** (`ghcr.io/cmdevrg/ledgerd` and `ledgerd-postgres`, pinned by tag and digest)            | One command can start the whole stack without building Go code or copying ledgerd's database setup                                                                                                             | ledgerd must publish images (a ledgerd task, release 0.2.0)                                                                  |
+| D12 | **Playwright** end-to-end tests run against that real stack and also produce the screenshots                                                         | The only test that proves the pieces work together, and the README images cannot go stale                                                                                                                      | Slower; needs a browser and system libraries in CI                                                                           |
 
 ## 2. Architecture
 
@@ -48,12 +48,12 @@ flowchart LR
 
 ### Development and production
 
-| | Production (`npm start`, the container) | Development (`npm run dev`) |
-|---|---|---|
-| Static files | served by the console server from `dist/` | served by Vite with hot reload on `:5173` |
-| `/api` | handled by the console server on `:8787` | Vite forwards `/api` to the console server running with `tsx watch` |
-| Security checks | all enforced | all enforced (the allowed hosts and origins include `localhost:5173`) |
-| API key | read from the server's environment | read from the server's environment |
+|                 | Production (`npm start`, the container)   | Development (`npm run dev`)                                           |
+| --------------- | ----------------------------------------- | --------------------------------------------------------------------- |
+| Static files    | served by the console server from `dist/` | served by Vite with hot reload on `:5173`                             |
+| `/api`          | handled by the console server on `:8787`  | Vite forwards `/api` to the console server running with `tsx watch`   |
+| Security checks | all enforced                              | all enforced (the allowed hosts and origins include `localhost:5173`) |
+| API key         | read from the server's environment        | read from the server's environment                                    |
 
 Both modes use the same server code, so the key handling developers see is the one that ships.
 
@@ -76,18 +76,18 @@ Middleware run in this order; the first that refuses ends the request.
 
 ### Allow-list
 
-| Method | Path (browser side) | Used by |
-|---|---|---|
-| GET | `/api/readyz` | connection status |
-| GET | `/api/v1/accounts` | account list, lab count |
-| POST | `/api/v1/accounts` | create account, lab |
-| GET | `/api/v1/accounts/{id}` | account page |
-| GET | `/api/v1/accounts/{id}/balance` | balance, as-of |
-| GET | `/api/v1/accounts/{id}/postings` | history |
-| POST | `/api/v1/transactions` | builder, lab |
-| GET | `/api/v1/transactions/{id}` | transaction page |
-| POST | `/api/v1/transactions/{id}/reverse` | reversal, lab |
-| POST | `/api/v1/reconciliations` | reconciliation |
+| Method | Path (browser side)                 | Used by                 |
+| ------ | ----------------------------------- | ----------------------- |
+| GET    | `/api/readyz`                       | connection status       |
+| GET    | `/api/v1/accounts`                  | account list, lab count |
+| POST   | `/api/v1/accounts`                  | create account, lab     |
+| GET    | `/api/v1/accounts/{id}`             | account page            |
+| GET    | `/api/v1/accounts/{id}/balance`     | balance, as-of          |
+| GET    | `/api/v1/accounts/{id}/postings`    | history                 |
+| POST   | `/api/v1/transactions`              | builder, lab            |
+| GET    | `/api/v1/transactions/{id}`         | transaction page        |
+| POST   | `/api/v1/transactions/{id}/reverse` | reversal, lab           |
+| POST   | `/api/v1/reconciliations`           | reconciliation          |
 
 A test compares this table with the `paths` of the generated types, so a new ledgerd
 endpoint is never exposed by accident and a removed one is noticed. `/healthz` and
@@ -115,14 +115,14 @@ stylesheet, and charts are SVG elements styled with classes. A test fails if the
 
 ### Configuration
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `LEDGERD_URL` | `http://127.0.0.1:8085` | Base URL of ledgerd |
-| `LEDGERD_API_KEY` | required | Added to forwarded requests; at least 16 characters; never logged or sent to the browser |
-| `CONSOLE_ADDR` | `127.0.0.1:8787` | Listen address (loopback by default) |
-| `CONSOLE_ALLOWED_HOSTS` | `localhost:8787,127.0.0.1:8787` | Accepted `Host` values |
-| `CONSOLE_ALLOWED_ORIGINS` | `http://localhost:8787,http://127.0.0.1:8787` | Accepted `Origin` values |
-| `CONSOLE_LOG_LEVEL` | `info` | |
+| Variable                  | Default                                       | Meaning                                                                                  |
+| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `LEDGERD_URL`             | `http://127.0.0.1:8085`                       | Base URL of ledgerd                                                                      |
+| `LEDGERD_API_KEY`         | required                                      | Added to forwarded requests; at least 16 characters; never logged or sent to the browser |
+| `CONSOLE_ADDR`            | `127.0.0.1:8787`                              | Listen address (loopback by default)                                                     |
+| `CONSOLE_ALLOWED_HOSTS`   | `localhost:8787,127.0.0.1:8787`               | Accepted `Host` values                                                                   |
+| `CONSOLE_ALLOWED_ORIGINS` | `http://localhost:8787,http://127.0.0.1:8787` | Accepted `Origin` values                                                                 |
+| `CONSOLE_LOG_LEVEL`       | `info`                                        |                                                                                          |
 
 Configuration errors are reported all at once and never print the key (the key is held
 in a wrapper type that prints as `[REDACTED]`, the same idea as in ledgerd).
@@ -161,17 +161,17 @@ data/benchmark.json
 
 ### Routes
 
-| Path | Page | Notes |
-|---|---|---|
-| `/` | Overview | status, counts, shortcuts |
-| `/accounts` | Account list and create form | filter state in the URL (`?code=&currency=`) |
-| `/accounts/:id` | Account detail | `?as_of=` in the URL; history with "load more" |
-| `/transactions/new` | Builder | |
-| `/transactions/:id` | Transaction | reverse button |
-| `/lab` | Failure Lab | scenario list, results |
-| `/reconciliation` | Reconciliation | |
-| `/benchmark` | Benchmark results | |
-| `/settings` | Display scales, theme | local only |
+| Path                | Page                         | Notes                                          |
+| ------------------- | ---------------------------- | ---------------------------------------------- |
+| `/`                 | Overview                     | status, counts, shortcuts                      |
+| `/accounts`         | Account list and create form | filter state in the URL (`?code=&currency=`)   |
+| `/accounts/:id`     | Account detail               | `?as_of=` in the URL; history with "load more" |
+| `/transactions/new` | Builder                      |                                                |
+| `/transactions/:id` | Transaction                  | reverse button                                 |
+| `/lab`              | Failure Lab                  | scenario list, results                         |
+| `/reconciliation`   | Reconciliation               |                                                |
+| `/benchmark`        | Benchmark results            |                                                |
+| `/settings`         | Display scales, theme        | local only                                     |
 
 Each page module is loaded on demand. Unknown routes show a 404 page with navigation.
 
@@ -211,7 +211,7 @@ compute, per currency, total debits, total credits and the difference with `bigi
 arithmetic, and whether the transaction is balanced. The reducer and selectors are
 property-tested (random rows: totals equal the sum of what was entered; the balance verdict
 agrees with an independent computation). The submit handler builds the request, sets the
-`Idempotency-Key`, and keeps the *exact* request so "send the same request again" reuses it
+`Idempotency-Key`, and keeps the _exact_ request so "send the same request again" reuses it
 byte for byte.
 
 ### Error presentation
@@ -243,39 +243,54 @@ middle, full value in the title, copyable.
 ## 5. Failure Lab
 
 ```ts
-interface Exchange {            // one HTTP round trip, as recorded
-  method: string; path: string; headers: Record<string, string>; body?: unknown
-  status: number; responseHeaders: Record<string, string>; responseBody: unknown; ms: number
+interface Exchange {
+  // one HTTP round trip, as recorded
+  method: string;
+  path: string;
+  headers: Record<string, string>;
+  body?: unknown;
+  status: number;
+  responseHeaders: Record<string, string>;
+  responseBody: unknown;
+  ms: number;
 }
-interface LabApi { send(request: LabRequest): Promise<Exchange> }   // does not throw on HTTP errors
+interface LabApi {
+  send(request: LabRequest): Promise<Exchange>;
+} // does not throw on HTTP errors
 
 interface Step {
-  title: string; explanation: string
-  exchanges: Exchange[]
-  checks: { label: string; expected: string; actual: string; ok: boolean }[]
+  title: string;
+  explanation: string;
+  exchanges: Exchange[];
+  checks: { label: string; expected: string; actual: string; ok: boolean }[];
 }
 interface ScenarioResult {
-  id: ScenarioId
-  verdict: 'as-designed' | 'unexpected' | 'could-not-run'
-  steps: Step[]
+  id: ScenarioId;
+  verdict: 'as-designed' | 'unexpected' | 'could-not-run';
+  steps: Step[];
 }
-type Scenario = { id: ScenarioId; title: string; summary: string; run(api: LabApi, ids: IdSource): Promise<ScenarioResult> }
+type Scenario = {
+  id: ScenarioId;
+  title: string;
+  summary: string;
+  run(api: LabApi, ids: IdSource): Promise<ScenarioResult>;
+};
 ```
 
 - The browser never has the API key, so a recorded exchange cannot contain it; an architecture test asserts that no recorded header is `authorization`.
 - A scenario is a function. The UI runs it, shows each step (request, response, checks) and the verdict, which is `as-designed` only if every check passed. A network failure gives `could-not-run`, never `as-designed`.
 - Lab accounts are created with codes `lab-<run id>-<name>`; the Lab counts them through `GET /v1/accounts?code_prefix=lab-`.
 
-| Scenario | What it does | Passes if |
-|---|---|---|
-| a. Overdraft | fund a protected wallet with 100, withdraw 101 | the withdrawal is `422 insufficient_funds` and the balance is still 100 |
-| b. Retry | send a deposit twice with the same key | the second answer has `Idempotent-Replayed: true`, the same transaction id, and the balance changed once |
-| c. Key reuse | same key, different amount | `422 idempotency_key_reuse`, balance unchanged |
-| d. Unbalanced | debit 100, credit 99 | `422 unbalanced_transaction`, nothing recorded |
-| e. Number amount | `"amount": 100` as a JSON number | `422 validation_error` naming `postings[0].amount` |
-| f. Precision | deposit 2^53+1, 2^63 and 10^30; then 10^30+1 | balances equal the exact digits; the last is refused |
-| g. Double reversal | reverse a transaction twice | the first `201`, the second `409 already_reversed` |
-| h. Concurrency | 30 withdrawals of 10 against a balance of 100, sent in parallel | exactly 10 accepted, 20 refused, final balance 0 |
+| Scenario           | What it does                                                    | Passes if                                                                                                |
+| ------------------ | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| a. Overdraft       | fund a protected wallet with 100, withdraw 101                  | the withdrawal is `422 insufficient_funds` and the balance is still 100                                  |
+| b. Retry           | send a deposit twice with the same key                          | the second answer has `Idempotent-Replayed: true`, the same transaction id, and the balance changed once |
+| c. Key reuse       | same key, different amount                                      | `422 idempotency_key_reuse`, balance unchanged                                                           |
+| d. Unbalanced      | debit 100, credit 99                                            | `422 unbalanced_transaction`, nothing recorded                                                           |
+| e. Number amount   | `"amount": 100` as a JSON number                                | `422 validation_error` naming `postings[0].amount`                                                       |
+| f. Precision       | deposit 2^53+1, 2^63 and 10^30; then 10^30+1                    | balances equal the exact digits; the last is refused                                                     |
+| g. Double reversal | reverse a transaction twice                                     | the first `201`, the second `409 already_reversed`                                                       |
+| h. Concurrency     | 30 withdrawals of 10 against a balance of 100, sent in parallel | exactly 10 accepted, 20 refused, final balance 0                                                         |
 
 Browsers limit parallel connections to one host (6 for HTTP/1.1); the concurrency scenario
 reports the highest number of requests it observed in flight and says so.
@@ -290,18 +305,18 @@ Testing: each scenario runs against (1) a fake in-memory ledger that implements 
 - A Zod schema validates it when the module loads and in `npm run verify` (`scripts/check-benchmark.ts`), so a bad file fails the build and cannot reach a user.
 - `scripts/import-k6.ts` converts ledgerd's `bench/results/summary.json` and `environment.txt` into that file. Updating the page is: run `make bench` in ledgerd, run the importer, review the diff.
 - Charts are `SvgBarChart` components: grouped bars by virtual users for throughput and for p95 latency, each with `role="img"`, a title and description, and a visible `<table>` holding the same numbers.
-- The text next to the charts says what *spread* and *hot account* mean and that the numbers come from one laptop.
+- The text next to the charts says what _spread_ and _hot account_ mean and that the numbers come from one laptop.
 
 ## 7. Testing strategy
 
-| Layer | Tool | What it proves |
-|---|---|---|
-| Pure logic | Vitest + fast-check | money parse/format, builder totals, scenario checks, error classification |
-| Components | Vitest + Testing Library + MSW + axe-core | each page's behaviour, error states, keyboard use and accessibility, with the API mocked and any unmocked request failing the test |
-| Console server | Vitest (node) with `app.request()` and a fake ledgerd | allow-list, header policy, Host/Origin/CSRF refusals, rate limit, size limit, timeouts, 401 translation, `Location` rewriting, key never present in responses or logs |
-| Build | scripts in `npm run verify` | no inline script or style in `index.html`; the configured key does not appear in the bundle; benchmark data valid; generated types current and compile |
-| End to end | Playwright + `@axe-core/playwright` against the real stack | the whole flow in a real browser; every Lab scenario against real ledgerd; screenshots |
-| Dependencies | `npm audit` | no high-severity advisory in production dependencies |
+| Layer          | Tool                                                       | What it proves                                                                                                                                                        |
+| -------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pure logic     | Vitest + fast-check                                        | money parse/format, builder totals, scenario checks, error classification                                                                                             |
+| Components     | Vitest + Testing Library + MSW + axe-core                  | each page's behaviour, error states, keyboard use and accessibility, with the API mocked and any unmocked request failing the test                                    |
+| Console server | Vitest (node) with `app.request()` and a fake ledgerd      | allow-list, header policy, Host/Origin/CSRF refusals, rate limit, size limit, timeouts, 401 translation, `Location` rewriting, key never present in responses or logs |
+| Build          | scripts in `npm run verify`                                | no inline script or style in `index.html`; the configured key does not appear in the bundle; benchmark data valid; generated types current and compile                |
+| End to end     | Playwright + `@axe-core/playwright` against the real stack | the whole flow in a real browser; every Lab scenario against real ledgerd; screenshots                                                                                |
+| Dependencies   | `npm audit`                                                | no high-severity advisory in production dependencies                                                                                                                  |
 
 Mocks are built with factories typed by the generated schema types, so a renamed or retyped
 field breaks the compile. Coverage is reported for the client and the server; the threshold

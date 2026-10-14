@@ -37,6 +37,18 @@ export default tseslint.config(
     ...reactHooks.configs.flat.recommended,
   },
 
+  // The console server runs on Node, not in a browser.
+  {
+    files: ['server/**/*.ts'],
+    languageOptions: { globals: globals.node },
+  },
+
+  // This test needs markup that is deliberately inaccessible, to prove the check can fail.
+  {
+    files: ['src/test/axe.test.tsx'],
+    rules: { 'jsx-a11y/alt-text': 'off', 'jsx-a11y/label-has-associated-control': 'off' },
+  },
+
   // Plain JavaScript files (this one) are not part of the TypeScript project.
   {
     files: ['**/*.js'],
