@@ -21,7 +21,7 @@ Console tasks that need them say so.
   - `parseAmount`, `formatAmount`, scales, errors; the lint rule against float conversions; the architecture test that greps `src/money`.
   - Verify: unit tests for every rejection; property tests for round trips from 1 to 10^30 and scales 0 to 18.
   - _R5.1–R5.5_
-- [ ] 4. API layer
+- [x] 4. API layer
   - Regenerate types from ledgerd 0.2.0; Zod schemas for every response with the compile-time equality checks; the HTTP client (prefix, custom header, timeouts, four error kinds); typed test factories; query hooks.
   - Verify: tests for each error kind and for a response that does not match its schema; type checks fail when a schema is changed on purpose.
   - Needs ledgerd tasks 33–35.

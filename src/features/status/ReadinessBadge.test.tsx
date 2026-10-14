@@ -47,6 +47,6 @@ describe('ReadinessBadge', () => {
     // A proxy or a wrong server answering 200 with something else must not look "ready".
     server.use(http.get('*/api/readyz', () => HttpResponse.json({ status: 'fine, thanks' })));
     renderWithProviders(<ReadinessBadge />);
-    expect(await screen.findByText('Cannot reach the API')).toBeInTheDocument();
+    expect(await screen.findByText('Unexpected answer from the API')).toBeInTheDocument();
   });
 });

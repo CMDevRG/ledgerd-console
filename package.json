@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "generate:api": "openapi-typescript ${LEDGERD_OPENAPI:-../ledgerd/docs/openapi.yaml} -o src/api/schema.d.ts",
+    "generate:api": "openapi-typescript ${LEDGERD_OPENAPI:-https://raw.githubusercontent.com/CMDevRG/ledgerd/v0.2.0/docs/openapi.yaml} -o src/api/schema.d.ts",
     "check:api": "npm run generate:api --silent && git diff --exit-code -- src/api/schema.d.ts",
     "verify": "npm run typecheck && npm run check:api-types && npm run lint && npm run format:check && npm run test && npm run build",
     "check:api-types": "tsc --noEmit --ignoreConfig --strict --skipLibCheck false src/api/schema.d.ts"

@@ -1,4 +1,4 @@
-import { ApiError } from '../../api/http';
+import { ApiError } from '../../api/problem';
 import { useReadiness } from './useReadiness';
 
 export function ReadinessBadge() {
@@ -12,8 +12,11 @@ export function ReadinessBadge() {
   } else if (!isError) {
     label = 'API ready';
     tone = 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100';
-  } else if (error instanceof ApiError) {
+  } else if (error instanceof ApiError && (error.kind === 'refused' || error.kind === 'busy')) {
     label = 'API not ready';
+    tone = 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100';
+  } else if (error instanceof ApiError && error.kind === 'unexpected') {
+    label = 'Unexpected answer from the API';
     tone = 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100';
   } else {
     label = 'Cannot reach the API';

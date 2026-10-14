@@ -51,7 +51,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List accounts, newest first
+         * @description Keyset pagination on creation time and id, which never change for an account:
+         *     accounts created while paging never cause one to be skipped or repeated.
+         *     The filters combine with AND.
+         */
+        get: operations["listAccounts"];
         put?: never;
         /** Create an account */
         post: operations["createAccount"];
@@ -268,6 +274,11 @@ export interface components {
             balance: components["schemas"]["Balance"];
             last_posting_at: components["schemas"]["Timestamp"] | null;
             created_at: components["schemas"]["Timestamp"];
+        };
+        AccountsPage: {
+            accounts: components["schemas"]["Account"][];
+            /** @description Null on the last page. */
+            next_cursor: string | null;
         };
         PostingRequest: {
             account_id: components["schemas"]["UUIDInput"];
@@ -580,6 +591,39 @@ export interface operations {
                 };
             };
             503: components["responses"]["NotReady"];
+        };
+    };
+    listAccounts: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description Opaque; use the `next_cursor` of the previous page. */
+                cursor?: string;
+                /** @description Only accounts whose code starts with this text. A plain prefix, case-sensitive; `_` is an ordinary character. */
+                code_prefix?: string;
+                currency?: components["schemas"]["Currency"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of accounts */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountsPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
+            500: components["responses"]["InternalError"];
+            503: components["responses"]["Unavailable"];
         };
     };
     createAccount: {
