@@ -37,6 +37,21 @@ export default tseslint.config(
     ...reactHooks.configs.flat.recommended,
   },
 
+  // The money module never converts an amount to a floating-point number.
+  {
+    files: ['src/money/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...['Number', 'parseFloat', 'parseInt', 'Math'].map((name) => ({
+          name,
+          message: 'Amounts are bigint, never floating point. See src/money/amount.ts.',
+        })),
+      ],
+    },
+  },
+
   // The console server runs on Node, not in a browser.
   {
     files: ['server/**/*.ts'],

@@ -17,7 +17,7 @@ Console tasks that need them say so.
   - Add fast-check, axe-core, Hono, esbuild, tsx; split Vitest into a `client` project (jsdom) and a `server` project (node); a second `tsconfig` for the server; scripts `verify`, `coverage`.
   - Verify: `npm run verify` runs both projects.
   - _R16.1, R16.6_
-- [ ] 3. Money module
+- [x] 3. Money module
   - `parseAmount`, `formatAmount`, scales, errors; the lint rule against float conversions; the architecture test that greps `src/money`.
   - Verify: unit tests for every rejection; property tests for round trips from 1 to 10^30 and scales 0 to 18.
   - _R5.1–R5.5_
