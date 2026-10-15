@@ -2,13 +2,14 @@ import { Hono } from 'hono';
 import { randomBytes } from 'node:crypto';
 
 import type { Config } from './config';
+import { forward } from './forward';
 import { RateLimiter } from './rate-limit';
 import { crossSiteDefence, hostCheck, jsonBodyLimit, rateLimit, securityHeaders } from './security';
 import type { Logger } from './logger';
 import { problemResponse } from './problem';
 
 export interface AppEnv {
-  Variables: { requestId: string };
+  Variables: { requestId: string; forwarded?: boolean };
 }
 
 export interface AppDeps {
@@ -20,6 +21,8 @@ export interface AppDeps {
   limits?: Partial<Limits>;
   /** Time source for the rate limiter (tests inject a fake clock). */
   now?: () => number;
+  /** Replaces the per-route timeouts for forwarded calls (tests). */
+  forwardTimeoutMs?: number;
 }
 
 export interface Limits {
@@ -67,6 +70,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
       method: c.req.method,
       path: new URL(c.req.url).pathname,
       status: c.res.status,
+      forwarded: c.get('forwarded') === true,
       duration_ms: Math.round((performance.now() - started) * 1000) / 1000,
     });
   });
@@ -78,6 +82,16 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   // Everything under /api can change money, so it gets the cross-site and size defences.
   app.use('/api/*', crossSiteDefence(deps.config.allowedOrigins));
   app.use('/api/*', jsonBodyLimit(limits.maxBodyBytes));
+
+  // The API: forwarded to ledgerd if, and only if, it is on the allow-list.
+  app.all(
+    '/api/*',
+    forward({
+      config: deps.config,
+      logger,
+      ...(deps.forwardTimeoutMs !== undefined ? { timeoutMs: deps.forwardTimeoutMs } : {}),
+    }),
+  );
 
   // The console server's own probes. They are not forwarded to ledgerd.
   app.get('/healthz', (c) => c.json({ status: 'ok' }));

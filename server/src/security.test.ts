@@ -1,26 +1,39 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { createApp, DEFAULT_LIMITS } from './app';
 import { CONTENT_SECURITY_POLICY } from './security';
-import { captureLogger, CONSOLE_HEADERS, send, testConfig, withHost } from './testkit';
+import {
+  captureLogger,
+  CONSOLE_HEADERS,
+  send,
+  startFakeLedgerd,
+  testConfig,
+  withHost,
+} from './testkit';
+
+// A fake ledgerd that answers {"reached":true}: seeing that answer means a request got
+// through every defence; anything else means a defence refused it first.
+const ledgerd = await startFakeLedgerd();
+afterAll(async () => {
+  await ledgerd.close();
+});
 
 function build(options: { now?: () => number; limits?: Partial<typeof DEFAULT_LIMITS> } = {}) {
   const log = captureLogger();
   const app = createApp({
-    config: testConfig(),
+    config: testConfig({ ledgerdUrl: ledgerd.url }),
     logger: log.logger,
     checkLedgerd: () => Promise.resolve(true),
     ...options,
   });
-  // A route that echoes, so we can tell "reached the handler" from "refused earlier".
-  app.post('/api/echo', (c) => c.json({ reached: true }));
-  app.get('/api/echo', (c) => c.json({ reached: true }));
   return { app, log };
 }
 
+const API = '/api/v1/accounts';
+
 const json = { 'Content-Type': 'application/json' };
 const post = (app: ReturnType<typeof build>['app'], headers: Record<string, string>, body = '{}') =>
-  send(app, '/api/echo', { method: 'POST', headers, body });
+  send(app, API, { method: 'POST', headers, body });
 
 async function code(response: Response): Promise<string> {
   return ((await response.json()) as { code: string }).code;
@@ -127,7 +140,7 @@ describe('cross-site request forgery', () => {
 
   it('applies to every state-changing method', async () => {
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
-      const response = await send(app, '/api/echo', {
+      const response = await send(app, API, {
         method,
         headers: json,
         ...(method === 'DELETE' ? {} : { body: '{}' }),
@@ -137,7 +150,7 @@ describe('cross-site request forgery', () => {
   });
 
   it('does not require the header for reads', async () => {
-    expect((await send(app, '/api/echo')).status).toBe(200);
+    expect((await send(app, API)).status).toBe(200);
   });
 
   it('does not apply to the console server own probes or pages', async () => {
@@ -176,9 +189,7 @@ describe('request body limits', () => {
       },
     });
     // The app reads the body in a handler that needs it; here the limit middleware does.
-    const sized = build();
-    sized.app.post('/api/read', async (c) => c.json({ length: (await c.req.text()).length }));
-    const response = await send(sized.app, '/api/read', {
+    const response = await send(build().app, API, {
       method: 'POST',
       headers,
       body: streamed,
@@ -208,9 +219,7 @@ describe('request body limits', () => {
   });
 
   it('lets a request with no body through without a content type (reverse, reconcile)', async () => {
-    expect(
-      (await send(app, '/api/echo', { method: 'POST', headers: CONSOLE_HEADERS })).status,
-    ).toBe(200);
+    expect((await send(app, API, { method: 'POST', headers: CONSOLE_HEADERS })).status).toBe(200);
   });
 });
 
@@ -235,7 +244,7 @@ describe('rate limiting', () => {
 
   it('is generous enough for the Failure Lab: 100 requests at once are all served', async () => {
     const { app } = build();
-    const responses = await Promise.all(Array.from({ length: 100 }, () => send(app, '/api/echo')));
+    const responses = await Promise.all(Array.from({ length: 100 }, () => send(app, API)));
     expect(responses.every((r) => r.status === 200)).toBe(true);
   });
 
@@ -267,12 +276,12 @@ describe('security headers', () => {
     ],
     [
       'a forgery refusal (403)',
-      () => send(app, '/api/echo', { method: 'POST', headers: json, body: '{}' }),
+      () => send(app, API, { method: 'POST', headers: json, body: '{}' }),
     ],
     [
       'a size refusal (413)',
       () =>
-        send(app, '/api/echo', {
+        send(app, API, {
           method: 'POST',
           headers: { ...json, ...CONSOLE_HEADERS, 'Content-Length': '999999' },
           body: '{}',
@@ -293,7 +302,7 @@ describe('security headers', () => {
   });
 
   it('API answers are never cached', async () => {
-    expect((await send(app, '/api/echo')).headers.get('Cache-Control')).toBe('no-store');
+    expect((await send(app, API)).headers.get('Cache-Control')).toBe('no-store');
   });
 
   it('nothing reveals the server software', async () => {

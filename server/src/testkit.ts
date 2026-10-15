@@ -1,3 +1,6 @@
+import { createServer, type IncomingHttpHeaders, type ServerResponse } from 'node:http';
+import type { AddressInfo } from 'node:net';
+
 import type { Config } from './config';
 import { Secret } from './secret';
 import { createLogger, type Logger } from './logger';
@@ -66,4 +69,58 @@ export function withHost<T extends Requestable>(app: T): T {
         : value;
     },
   });
+}
+
+/** What a fake ledgerd received. */
+export interface Received {
+  method: string;
+  url: string;
+  headers: IncomingHttpHeaders;
+  body: string;
+}
+
+export interface FakeLedgerd {
+  url: URL;
+  /** Every request received, in order. */
+  requests: Received[];
+  close(): Promise<void>;
+}
+
+/**
+ * A real HTTP server standing in for ledgerd, so the console server's forwarding runs over
+ * real sockets. `respond` decides each answer (default: 200 with {"reached":true}).
+ */
+export async function startFakeLedgerd(
+  respond: (request: Received, response: ServerResponse) => void = (_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end('{"reached":true}');
+  },
+): Promise<FakeLedgerd> {
+  const requests: Received[] = [];
+  const server = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => {
+      const received: Received = {
+        method: req.method ?? '',
+        url: req.url ?? '',
+        headers: req.headers,
+        body: Buffer.concat(chunks).toString(),
+      };
+      requests.push(received);
+      respond(received, res);
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: new URL(`http://127.0.0.1:${String(port)}`),
+    requests,
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections();
+        server.close(() => {
+          resolve();
+        });
+      }),
+  };
 }

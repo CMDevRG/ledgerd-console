@@ -37,7 +37,7 @@ Console tasks that need them say so.
   - Host check, rate limit (token bucket with an injectable clock), security headers and CSP, body limit, the custom-header and Origin/`Sec-Fetch-Site` checks.
   - Verify: one hostile-request test per defence (wrong Host, cross-origin POST, POST without the header, oversized body, burst over the limit).
   - _R15.1, R15.2, R15.3, R15.5, R15.8_
-- [ ] 7. Allow-list and forwarding
+- [x] 7. Allow-list and forwarding
   - The route table and its comparison with the generated `paths`; header allow-lists in both directions; `Location` rewriting; translation of ledgerd `401` to `502` and of network failures to `504`; per-route timeouts; no cookies.
   - Verify: tests against a fake ledgerd for every route, every header rule and every translation; a test that the key appears in no response, header or log line.
   - _R2.1–R2.3, R15.6_

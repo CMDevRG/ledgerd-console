@@ -68,9 +68,9 @@ Middleware run in this order; the first that refuses ends the request.
 3. **Rate limit**: token bucket per client address, 50 requests per second sustained with a burst of 200, else `429` with `Retry-After`. (Generous enough for the Lab's concurrent scenario; the limit exists to stop a runaway page, not to meter a person.)
 4. **Security headers** on every response: `Content-Security-Policy` (below), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, `Cross-Origin-Opener-Policy: same-origin`, and `Cache-Control: no-store` for `/api`.
 5. For `/api/*` only:
-   1. **Allow-list**: `(method, path)` must match a route in the table below, else `404` (unknown path) or `405` (known path, wrong method, with `Allow`). ledgerd is not contacted.
-   2. **Cross-site defences** for every method except `GET` and `HEAD`: the request must carry `X-Ledgerd-Console: 1`, and if it carries an `Origin` it must be in the allowed origins; if it carries `Sec-Fetch-Site` it must not be `cross-site`. Otherwise `403`.
-   3. **Body limit** (64 KiB; ledgerd's own limit is 1 MiB, the console never needs that much) and, when a body is present, `Content-Type: application/json`.
+   1. **Cross-site defences** for every method except `GET` and `HEAD`: the request must carry `X-Ledgerd-Console: 1`; if it carries an `Origin` it must be in the allowed origins; if it carries `Sec-Fetch-Site` it must be `same-origin` (so `same-site` and `none` are refused too). Otherwise `403`. This runs first, so a forged write learns nothing about which paths exist.
+   2. **Body limit** (64 KiB; ledgerd's own limit is 1 MiB, the console never needs that much) and, when a body is present, `Content-Type: application/json`.
+   3. **Allow-list**: `(method, path)` must match a route in the table below, else `404` (unknown path) or `405` (known path, wrong method, with `Allow`). ledgerd is not contacted. An identifier segment may contain only letters, digits and dashes, so `..`, `%2f` and similar never match.
    4. **Forward** (below).
 6. Everything else: a file from `dist/` if it exists, otherwise `index.html` (so deep links like `/accounts/…` work). A path that looks like a file but does not exist (`/assets/x.js`) returns `404`, not the HTML.
 
