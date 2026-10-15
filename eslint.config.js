@@ -23,6 +23,22 @@ export default tseslint.config(
         { name: 'parseFloat', message: 'Never parse money as a float; use BigInt.' },
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Server-provided text is rendered as text, never as HTML (requirement R15.4).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message: 'Never render server-provided text as HTML.',
+        },
+        {
+          selector: 'MemberExpression[property.name=/^(innerHTML|outerHTML)$/]',
+          message: 'Never render server-provided text as HTML.',
+        },
+        {
+          selector: "MemberExpression[property.name='insertAdjacentHTML']",
+          message: 'Never render server-provided text as HTML.',
+        },
+      ],
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     },
   },
@@ -64,9 +80,15 @@ export default tseslint.config(
     rules: { 'jsx-a11y/alt-text': 'off', 'jsx-a11y/label-has-associated-control': 'off' },
   },
 
+  // Scripts the browser loads as they are (public/), not part of the TypeScript project.
+  {
+    files: ['public/**/*.js'],
+    languageOptions: { globals: globals.browser, sourceType: 'script' },
+  },
+
   // Plain JavaScript files (this one) are not part of the TypeScript project.
   {
-    files: ['**/*.js'],
+    files: ['*.js'],
     languageOptions: { globals: globals.node },
   },
 );

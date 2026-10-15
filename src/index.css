@@ -1,5 +1,36 @@
 @import 'tailwindcss';
 
+/* Dark mode follows a `dark` class on <html>, set before first paint by /theme.js from the
+   saved preference or the operating system, and kept in step by the settings. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+}
+
+/* A focus indicator that is visible on both themes (WCAG 2.4.7, 2.4.11). */
+:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+.dark :focus-visible {
+  outline-color: #93c5fd;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

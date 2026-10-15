@@ -32,6 +32,8 @@ export default defineConfig({
           environment: 'jsdom',
           include: ['src/**/*.test.{ts,tsx}'],
           setupFiles: ['./src/test/setup.ts'],
+          // axe-core is thorough and slow in jsdom, more so when many test files run at once.
+          testTimeout: 30_000,
         },
       },
       {

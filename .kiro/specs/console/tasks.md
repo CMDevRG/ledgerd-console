@@ -48,7 +48,7 @@ Console tasks that need them say so.
 
 ## Phase 3 — Application shell and pages
 
-- [ ] 9. Shell and UI primitives
+- [x] 9. Shell and UI primitives
   - Router with lazy routes, layout with landmarks, error boundary, live region, theme (external script), settings page with display scales; `Field`, `Button`, `Table`, `Dialog`, `CopyText`, `Amount`, `Time`, error components.
   - Verify: component tests with axe for each primitive; keyboard tests; the error boundary test.
   - _R12.2–R12.5, R13, R14_

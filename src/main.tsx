@@ -1,28 +1,18 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router';
 
-import { App } from './App';
+import { Providers, createQueryClient } from './app/Providers';
+import { createAppRouter } from './app/router';
 import './index.css';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Money data should not be silently stale for long, but refetching on every
-      // window focus is noisy for a console; keep the default off and poll where it matters.
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 const root = document.getElementById('root');
 if (!root) throw new Error('index.html has no #root element');
 
 createRoot(root).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
+    <Providers client={createQueryClient()}>
+      <RouterProvider router={createAppRouter()} />
+    </Providers>
   </StrictMode>,
 );
