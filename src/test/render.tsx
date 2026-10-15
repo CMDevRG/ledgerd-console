@@ -18,6 +18,7 @@ export function renderWithProviders(ui: ReactElement): RenderResult {
 }
 
 export interface AppRender extends RenderResult {
+  client: QueryClient;
   settings: SettingsStore;
   router: ReturnType<typeof createMemoryRouter>;
 }
@@ -29,10 +30,11 @@ export interface AppRender extends RenderResult {
 export function renderApp(path = '/', extraRoutes: RouteObject[] = routes): AppRender {
   const settings = createSettingsStore(undefined);
   const router = createMemoryRouter(extraRoutes, { initialEntries: [path] });
+  const client = testQueryClient();
   const result = render(
-    <Providers client={testQueryClient()} settings={settings}>
+    <Providers client={client} settings={settings}>
       <RouterProvider router={router} />
     </Providers>,
   );
-  return Object.assign(result, { settings, router });
+  return Object.assign(result, { client, settings, router });
 }

@@ -59,7 +59,7 @@ Console tasks that need them say so.
   - Infinite list, filters in the URL, empty state, the form with client-side rules, server field errors, suggested normal balance.
   - Needs ledgerd 0.2.0.
   - _R3_
-- [ ] 12. Account detail
+- [x] 12. Account detail
   - Attributes and balance with polling, as-of control and URL state, history with "load more", the note on intermediate rows.
   - _R4_
 - [ ] 13. Transaction builder
