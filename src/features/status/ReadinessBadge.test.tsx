@@ -1,52 +1,51 @@
-import { screen } from '@testing-library/react';
-import { http, HttpResponse } from 'msw';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { server } from '../../test/server';
+import { expectNoAccessibilityViolations } from '../../test/axe';
+import { mockReadiness } from '../../test/readiness';
 import { renderWithProviders } from '../../test/render';
 import { ReadinessBadge } from './ReadinessBadge';
 
 describe('ReadinessBadge', () => {
   it('shows a neutral state while the first check is running', () => {
-    server.use(http.get('*/api/readyz', () => new Promise(() => undefined)));
+    mockReadiness('neverAnswers');
     renderWithProviders(<ReadinessBadge />);
-    expect(screen.getByRole('status')).toHaveTextContent('Checking API');
+    expect(screen.getByText('Checking API…')).toBeInTheDocument();
   });
 
-  it('shows ready when /readyz answers ready', async () => {
-    server.use(http.get('*/api/readyz', () => HttpResponse.json({ status: 'ready' })));
-    renderWithProviders(<ReadinessBadge />);
-    expect(await screen.findByText('API ready')).toBeInTheDocument();
+  it.each([
+    ['ready', 'API ready', '✓'],
+    ['notReady', 'API not ready', '!'],
+    ['unreachable', 'Cannot reach the API', '✕'],
+    ['gatewayDown', 'Cannot reach the API', '✕'],
+    ['misconfigured', 'Console key rejected', '✕'],
+    ['unexpectedBody', 'Unexpected answer from the API', '!'],
+  ] as const)('with %s it says "%s" and shows %s', async (kind, label, symbol) => {
+    mockReadiness(kind);
+    const { container } = renderWithProviders(<ReadinessBadge />);
+    const badge = await screen.findByText(label);
+    expect(badge).toHaveTextContent(`${symbol}${label}`);
+    // The symbol is for the eyes: a screen reader hears the words only.
+    expect(container.querySelector('[aria-hidden="true"]')).toHaveTextContent(symbol);
+    await expectNoAccessibilityViolations(container);
   });
 
-  it('shows not ready when the API answers with a problem document', async () => {
-    server.use(
-      http.get('*/api/readyz', () =>
-        HttpResponse.json(
-          {
-            type: 'urn:ledgerd:error:not_ready',
-            title: 'Service not ready',
-            status: 503,
-            code: 'not_ready',
-          },
-          { status: 503, headers: { 'Content-Type': 'application/problem+json' } },
-        ),
-      ),
-    );
-    renderWithProviders(<ReadinessBadge />);
-    expect(await screen.findByText('API not ready')).toBeInTheDocument();
+  it('never shows "ready" for anything but a valid ready answer (R1.3)', async () => {
+    for (const kind of ['notReady', 'unexpectedBody', 'misconfigured', 'unreachable'] as const) {
+      mockReadiness(kind);
+      const { unmount } = renderWithProviders(<ReadinessBadge />);
+      await waitFor(() => {
+        expect(screen.queryByText('Checking API…')).not.toBeInTheDocument();
+      });
+      expect(screen.queryByText('API ready')).not.toBeInTheDocument();
+      unmount();
+    }
   });
 
-  it('shows unreachable when the network fails', async () => {
-    server.use(http.get('*/api/readyz', () => HttpResponse.error()));
+  it('is not itself a live region: changes are announced once, through the page region', () => {
+    mockReadiness('neverAnswers');
     renderWithProviders(<ReadinessBadge />);
-    expect(await screen.findByText('Cannot reach the API')).toBeInTheDocument();
-  });
-
-  it('refuses a response that does not match the documented shape', async () => {
-    // A proxy or a wrong server answering 200 with something else must not look "ready".
-    server.use(http.get('*/api/readyz', () => HttpResponse.json({ status: 'fine, thanks' })));
-    renderWithProviders(<ReadinessBadge />);
-    expect(await screen.findByText('Unexpected answer from the API')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

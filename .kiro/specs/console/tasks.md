@@ -52,7 +52,7 @@ Console tasks that need them say so.
   - Router with lazy routes, layout with landmarks, error boundary, live region, theme (external script), settings page with display scales; `Field`, `Button`, `Table`, `Dialog`, `CopyText`, `Amount`, `Time`, error components.
   - Verify: component tests with axe for each primitive; keyboard tests; the error boundary test.
   - _R12.2–R12.5, R13, R14_
-- [ ] 10. Connection status
+- [x] 10. Connection status
   - Indicator and overview page on `/api/readyz`, with the explanatory states.
   - _R1_
 - [ ] 11. Accounts: list and create
