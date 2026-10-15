@@ -16,6 +16,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     allowedHosts: ['localhost:8787', '127.0.0.1:8787'],
     allowedOrigins: ['http://localhost:8787', 'http://127.0.0.1:8787'],
     logLevel: 'debug',
+    staticDir: '/nonexistent/ledgerd-console-dist',
     ...overrides,
   };
 }

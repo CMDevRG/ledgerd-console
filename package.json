@@ -8,7 +8,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "node --env-file-if-exists=.env.local --import tsx server/dev/dev.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p server/tsconfig.json",
@@ -22,7 +22,8 @@
     "check:api": "npm run generate:api --silent && git diff --exit-code -- src/api/schema.d.ts",
     "verify": "npm run typecheck && npm run check:api-types && npm run lint && npm run format:check && npm run test && npm run build",
     "check:api-types": "tsc --noEmit --ignoreConfig --strict --skipLibCheck false src/api/schema.d.ts",
-    "server:dev": "tsx watch server/src/main.ts"
+    "dev:web": "vite",
+    "dev:server": "tsx watch server/src/main.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",

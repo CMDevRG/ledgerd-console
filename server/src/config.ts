@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 import { Secret } from './secret';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -14,6 +16,8 @@ export interface Config {
   /** `Origin` values accepted on state-changing requests. */
   allowedOrigins: string[];
   logLevel: LogLevel;
+  /** Directory with the built web application (`npm run build`), absolute. */
+  staticDir: string;
 }
 
 export type ConfigResult = { ok: true; config: Config } | { ok: false; errors: string[] };
@@ -73,6 +77,7 @@ export function loadConfig(env: Env): ConfigResult {
       allowedHosts,
       allowedOrigins,
       logLevel: level as LogLevel,
+      staticDir: resolve(env.CONSOLE_STATIC_DIR ?? 'dist'),
     },
   };
 }

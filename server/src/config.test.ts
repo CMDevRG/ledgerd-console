@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { isLoopback, loadConfig, type Config } from './config';
@@ -23,6 +25,7 @@ describe('loadConfig', () => {
     expect(config.host).toBe('127.0.0.1');
     expect(config.port).toBe(8787);
     expect(config.ledgerdUrl.href).toBe('http://127.0.0.1:8085/');
+    expect(config.staticDir).toBe(resolve('dist'));
     expect(config.allowedHosts).toEqual(['localhost:8787', '127.0.0.1:8787']);
     expect(config.allowedOrigins).toEqual(['http://localhost:8787', 'http://127.0.0.1:8787']);
     expect(config.logLevel).toBe('info');

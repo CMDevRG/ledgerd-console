@@ -41,7 +41,7 @@ Console tasks that need them say so.
   - The route table and its comparison with the generated `paths`; header allow-lists in both directions; `Location` rewriting; translation of ledgerd `401` to `502` and of network failures to `504`; per-route timeouts; no cookies.
   - Verify: tests against a fake ledgerd for every route, every header rule and every translation; a test that the key appears in no response, header or log line.
   - _R2.1–R2.3, R15.6_
-- [ ] 8. Static files and the development runner
+- [x] 8. Static files and the development runner
   - Serve `dist/` with a single-page fallback that does not swallow missing assets; `npm run dev` runs Vite and the server together, with Vite forwarding `/api`.
   - Verify: tests for the fallback rules; the dev runner starts both and a request through Vite reaches the fake ledgerd.
   - _R17.2_

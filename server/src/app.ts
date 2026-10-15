@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 
 import type { Config } from './config';
 import { forward } from './forward';
+import { staticFiles } from './static';
 import { RateLimiter } from './rate-limit';
 import { crossSiteDefence, hostCheck, jsonBodyLimit, rateLimit, securityHeaders } from './security';
 import type { Logger } from './logger';
@@ -103,7 +104,14 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     });
   });
 
-  app.notFound((c) => problemResponse(c, 404, 'not_found', 'Not found'));
+  // What no route claimed: the web application (files from dist/, and index.html for page
+  // routes) for reads, a plain 404 for anything else.
+  const application = staticFiles(deps.config.staticDir);
+  app.notFound((c) =>
+    c.req.method === 'GET' || c.req.method === 'HEAD'
+      ? application(c)
+      : problemResponse(c, 404, 'not_found', 'Not found'),
+  );
 
   // Anything unexpected becomes a generic 500. The cause goes to the log, never to the client.
   app.onError((error, c) => {
