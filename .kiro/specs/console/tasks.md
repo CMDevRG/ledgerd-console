@@ -55,7 +55,7 @@ Console tasks that need them say so.
 - [x] 10. Connection status
   - Indicator and overview page on `/api/readyz`, with the explanatory states.
   - _R1_
-- [ ] 11. Accounts: list and create
+- [x] 11. Accounts: list and create
   - Infinite list, filters in the URL, empty state, the form with client-side rules, server field errors, suggested normal balance.
   - Needs ledgerd 0.2.0.
   - _R3_

@@ -8,5 +8,6 @@ export interface NavItem {
 /** The main navigation. A page is added here when it exists. */
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: 'Overview', end: true },
+  { to: '/accounts', label: 'Accounts' },
   { to: '/settings', label: 'Settings' },
 ];
