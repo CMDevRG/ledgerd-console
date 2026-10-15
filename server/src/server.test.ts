@@ -43,6 +43,30 @@ function get(port: number, path: string): Promise<Reply> {
   });
 }
 
+/**
+ * A readiness check that blocks until released, and a promise that settles when the server
+ * has actually started running it. Tests wait for that, not for a fixed time: under load a
+ * request can take much longer than any fixed pause to reach the server.
+ */
+function blockedCheck() {
+  let release: (ready: boolean) => void = () => undefined;
+  let arrive: () => void = () => undefined;
+  const blocked = new Promise<boolean>((resolve) => {
+    release = resolve;
+  });
+  const arrived = new Promise<void>((resolve) => {
+    arrive = resolve;
+  });
+  return {
+    check: () => {
+      arrive();
+      return blocked;
+    },
+    release,
+    arrived,
+  };
+}
+
 describe('the running server', () => {
   it('serves requests over a real socket', async () => {
     const { running, port } = await start(() => Promise.resolve(true));
@@ -65,20 +89,16 @@ describe('the running server', () => {
   });
 
   it('on shutdown, stops accepting new connections but lets a request in progress finish', async () => {
-    let release: (ready: boolean) => void = () => undefined;
-    const slow = new Promise<boolean>((resolve) => {
-      release = resolve;
-    });
-    const { running, port } = await start(() => slow);
+    const gate = blockedCheck();
+    const { running, port } = await start(gate.check);
 
     const inFlight = get(port, '/readyz'); // blocks until we release the check
-    await new Promise((r) => setTimeout(r, 50));
+    await gate.arrived; // the server has the request in hand
 
-    const closing = running.close(5000);
-    await new Promise((r) => setTimeout(r, 50));
+    const closing = running.close(5000); // stops listening before it returns
     await expect(get(port, '/healthz')).rejects.toThrow(); // the listener is already closed
 
-    release(true); // the slow request can now complete normally
+    gate.release(true); // the slow request can now complete normally
     const response = await inFlight;
     expect(response.status).toBe(200);
     const started = performance.now();
@@ -88,12 +108,13 @@ describe('the running server', () => {
   });
 
   it('cuts off requests that outlast the shutdown timeout, and says so', async () => {
-    const { running, port } = await start(() => new Promise<boolean>(() => undefined));
+    const gate = blockedCheck(); // never released
+    const { running, port } = await start(gate.check);
     const stuck = get(port, '/readyz').then(
       () => 'completed',
       () => 'cut off',
     );
-    await new Promise((r) => setTimeout(r, 50));
+    await gate.arrived;
 
     const result = await running.close(100);
     expect(result).toEqual({ forced: true });
