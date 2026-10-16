@@ -45,6 +45,9 @@ import {
   type BuildErrors,
   type RowErrors,
 } from './request';
+import { IdempotencyKeyField } from './IdempotencyKeyField';
+import { KeyNotice } from './KeyNotice';
+import type { SentRequest } from './repeat';
 import { ResultView } from './ResultView';
 import { TotalsPanel } from './TotalsPanel';
 
@@ -54,6 +57,8 @@ const NO_ROW_ERRORS: RowErrors = {};
 interface Posted {
   transaction: Transaction;
   accounts: AccountRef[];
+  /** The request as sent, so it can be sent again unchanged. */
+  sent: SentRequest;
 }
 
 export default function BuilderPage() {
@@ -110,7 +115,7 @@ export default function BuilderPage() {
       {
         onSuccess: ({ data }) => {
           const accounts = sent.rows.flatMap((r) => (r.account ? [r.account] : []));
-          setPosted({ transaction: data, accounts });
+          setPosted({ transaction: data, accounts, sent: { body, key: sent.key } });
           dispatch({ type: 'reset', key: newIdempotencyKey() });
           setErrors(NO_ERRORS);
           setUnplaced([]);
@@ -149,6 +154,9 @@ export default function BuilderPage() {
   const focusField = (key: string): void => {
     formRef.current?.querySelector<HTMLElement>(`[data-field="${key}"]`)?.focus();
   };
+  const newKey = (): void => {
+    edit({ type: 'setKey', key: newIdempotencyKey() });
+  };
   const atMax = state.rows.length >= MAX_ROWS;
   const atMin = state.rows.length <= MIN_ROWS;
 
@@ -165,6 +173,7 @@ export default function BuilderPage() {
           <ResultView
             transaction={posted.transaction}
             accounts={posted.accounts}
+            sent={posted.sent}
             onDismiss={() => {
               setPosted(undefined);
             }}
@@ -183,7 +192,12 @@ export default function BuilderPage() {
             ))}
           </ul>
         ) : null}
-        {otherError === undefined ? null : <ApiErrorView error={otherError} hideFieldErrors />}
+        {otherError === undefined ? null : (
+          <div className="flex flex-col gap-3">
+            <ApiErrorView error={otherError} hideFieldErrors />
+            <KeyNotice error={otherError} onNewKey={newKey} />
+          </div>
+        )}
 
         <Field label="Description" hint="Optional, up to 500 characters" error={errors.description}>
           {(control) => (
@@ -292,6 +306,15 @@ export default function BuilderPage() {
 
         <TotalsPanel state={state} settings={settings} />
 
+        <IdempotencyKeyField
+          value={state.key}
+          error={errors.key}
+          onChange={(key) => {
+            edit({ type: 'setKey', key });
+          }}
+          onNewKey={newKey}
+        />
+
         <div>
           <Button type="submit" variant="primary" loading={submission.isPending}>
             Send transaction
@@ -375,6 +398,9 @@ function summaryItems(state: BuilderState, errors: BuildErrors): SummaryItem[] {
   const items: SummaryItem[] = [];
   if (errors.description !== undefined) {
     items.push({ key: 'description', label: 'Description', message: errors.description });
+  }
+  if (errors.key !== undefined) {
+    items.push({ key: 'key', label: 'Idempotency key', message: errors.key });
   }
   errors.general.forEach((message, i) => {
     items.push({ key: `general-${String(i)}`, label: 'Postings', message });

@@ -1,7 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 
-import { createTransaction, type CreateTransactionBody } from '../../api/endpoints';
+import {
+  createTransaction,
+  getAccount,
+  getTransaction,
+  reverseTransaction,
+  type CreateTransactionBody,
+} from '../../api/endpoints';
 import { refreshAfterTransaction } from '../accounts/detailHooks';
 import { useAccountsList } from '../accounts/hooks';
 import { ACCOUNT_CODE_PATTERN } from '../accounts/rules';
@@ -57,4 +63,49 @@ export function useSubmitTransaction() {
       );
     },
   });
+}
+
+/** Keeps a transaction the person looked up. */
+export function useTransaction(id: string, enabled = true) {
+  return useQuery({
+    queryKey: ['transaction', id],
+    queryFn: ({ signal }) => getTransaction(id, signal),
+    enabled,
+    retry: false,
+    // A transaction never changes once recorded.
+    staleTime: Infinity,
+  });
+}
+
+/** Reverses a transaction, then brings the pages of the accounts it touched up to date. */
+export function useReverse() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, key }: { id: string; key: string; accountIds: readonly string[] }) =>
+      reverseTransaction(id, key),
+    onSuccess: async (_result, { accountIds }) => {
+      await refreshAfterTransaction(client, accountIds);
+    },
+  });
+}
+
+/**
+ * The codes of the accounts of a transaction, to show instead of ids. Read one by one (they are
+ * usually two), up to a limit; the rest are shown by id.
+ */
+export function useAccountCodes(ids: readonly string[]): Map<string, string> {
+  const unique = [...new Set(ids)].slice(0, 20);
+  const results = useQueries({
+    queries: unique.map((id) => ({
+      queryKey: ['account', id],
+      queryFn: ({ signal }: { signal: AbortSignal }) => getAccount(id, signal),
+      retry: false,
+    })),
+  });
+  return new Map(
+    results.flatMap((result, i) => {
+      const id = unique[i];
+      return id !== undefined && result.data ? [[id, result.data.data.code] as const] : [];
+    }),
+  );
 }

@@ -9,6 +9,7 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: 'Overview', end: true },
   { to: '/accounts', label: 'Accounts' },
+  { to: '/transactions', label: 'Transactions', end: true },
   { to: '/transactions/new', label: 'New transaction' },
   { to: '/settings', label: 'Settings' },
 ];

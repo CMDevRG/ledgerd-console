@@ -65,7 +65,7 @@ Console tasks that need them say so.
 - [x] 13. Transaction builder
   - Reducer and selectors (property-tested), the editor, live per-currency totals, the unbalanced warning, submission, result view with balances after.
   - _R6_
-- [ ] 14. Idempotency panel and reversal
+- [x] 14. Idempotency panel and reversal
   - Key display and editing, "send the same request again", replay explanation, key-reuse and "key not consumed" messages; transaction page, lookup by id, reversal dialog.
   - _R7, R8_
 

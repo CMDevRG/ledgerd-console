@@ -216,6 +216,37 @@ describe('placeServerErrors', () => {
   });
 });
 
+describe('the idempotency key in the form', () => {
+  it("is checked with ledgerd's rule, like everything else, before sending", () => {
+    for (const key of ['', ' ', 'two words', 'x'.repeat(256), 'tab\t']) {
+      const result = buildRequest(run(deposit(), { type: 'setKey', key }), none);
+      expect(result.ok, JSON.stringify(key)).toBe(false);
+      if (!result.ok) expect(result.errors.key).toMatch(/visible characters/);
+    }
+    expect(buildRequest(run(deposit(), { type: 'setKey', key: 'my-own-key-1' }), none).ok).toBe(
+      true,
+    );
+  });
+
+  it('has its error taken away when the key changes, and only that', () => {
+    const errors: BuildErrors = { key: 'bad', description: 'too long', rows: {}, general: [] };
+    expect(clearErrorsFor(errors, { type: 'setKey', key: 'ok' })).toEqual({
+      description: 'too long',
+      rows: {},
+      general: [],
+    });
+    expect(clearErrorsFor(errors, { type: 'setDescription', text: '' })).toEqual({
+      key: 'bad',
+      rows: {},
+      general: [],
+    });
+  });
+
+  it('counts as an error for hasErrors', () => {
+    expect(hasErrors({ key: 'bad', rows: {}, general: [] })).toBe(true);
+  });
+});
+
 describe('clearErrorsFor', () => {
   const errors: BuildErrors = {
     description: 'too long',
@@ -267,7 +298,7 @@ describe('clearErrorsFor', () => {
   });
 
   it('leaves errors alone for a change that cannot fix them, and for an unrelated row', () => {
-    expect(clearErrorsFor(errors, { type: 'setKey', key: 'k' })).toBe(errors);
+    expect(clearErrorsFor(errors, { type: 'setKey', key: 'k' })).toEqual(errors); // none about the key
     expect(clearErrorsFor(errors, { type: 'setAmount', id: 99, text: '1' })).toBe(errors);
   });
 });

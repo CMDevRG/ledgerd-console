@@ -1,4 +1,5 @@
 import type { CreateTransactionBody } from '../../api/endpoints';
+import { validateKey } from './key';
 import {
   MAX_DESCRIPTION,
   MAX_ROWS,
@@ -18,6 +19,8 @@ export interface RowErrors {
 
 export interface BuildErrors {
   description?: string;
+  /** The Idempotency-Key is not one ledgerd accepts. */
+  key?: string;
   /** By row id. */
   rows: Record<number, RowErrors>;
   /** About the transaction as a whole (the number of postings). */
@@ -42,6 +45,8 @@ export function buildRequest(state: BuilderState, settings: Scales): BuildResult
   if (characters(state.description) > MAX_DESCRIPTION) {
     errors.description = `Use at most ${String(MAX_DESCRIPTION)} characters`;
   }
+  const keyProblem = validateKey(state.key);
+  if (keyProblem !== undefined) errors.key = keyProblem;
   if (state.rows.length < MIN_ROWS)
     errors.general.push(`Add at least ${String(MIN_ROWS)} postings`);
   if (state.rows.length > MAX_ROWS) errors.general.push(`Use at most ${String(MAX_ROWS)} postings`);
@@ -68,6 +73,7 @@ export function buildRequest(state: BuilderState, settings: Scales): BuildResult
 
   const failed =
     errors.description !== undefined ||
+    errors.key !== undefined ||
     errors.general.length > 0 ||
     Object.keys(errors.rows).length > 0;
   if (failed) return { ok: false, errors };
@@ -127,8 +133,21 @@ export function placeServerErrors(
 
 export const hasErrors = (errors: BuildErrors): boolean =>
   errors.description !== undefined ||
+  errors.key !== undefined ||
   errors.general.length > 0 ||
   Object.keys(errors.rows).length > 0;
+
+/** The errors without one of the form-wide messages. */
+function omit(errors: BuildErrors, name: 'description' | 'key'): BuildErrors {
+  return {
+    ...(name === 'description' || errors.description === undefined
+      ? {}
+      : { description: errors.description }),
+    ...(name === 'key' || errors.key === undefined ? {} : { key: errors.key }),
+    rows: errors.rows,
+    general: errors.general,
+  };
+}
 
 /** The errors without the field `field` of row `id`; a row with no errors left is dropped. */
 function withoutRowFields(
@@ -159,7 +178,9 @@ function withoutRowFields(
 export function clearErrorsFor(errors: BuildErrors, action: Action): BuildErrors {
   switch (action.type) {
     case 'setDescription':
-      return { rows: errors.rows, general: errors.general };
+      return omit(errors, 'description');
+    case 'setKey':
+      return omit(errors, 'key');
     case 'setAccount':
       return withoutRowFields(errors, action.id, 'account', 'amount');
     case 'setAmount':
@@ -178,7 +199,5 @@ export function clearErrorsFor(errors: BuildErrors, action: Action): BuildErrors
       return { ...errors, rows: {}, general: [] };
     case 'reset':
       return { rows: {}, general: [] };
-    case 'setKey':
-      return errors;
   }
 }

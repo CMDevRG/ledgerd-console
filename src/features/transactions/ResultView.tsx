@@ -7,16 +7,20 @@ import { CopyText } from '../../ui/CopyText';
 import { Table, Td, Th } from '../../ui/Table';
 import { Time } from '../../ui/Time';
 import type { AccountRef } from './builder';
+import { IdempotencyPanel } from './IdempotencyPanel';
+import type { SentRequest } from './repeat';
 
 interface ResultViewProps {
   transaction: Transaction;
   /** The accounts of the request, to show codes instead of ids. */
   accounts: readonly AccountRef[];
+  /** The request as sent, for "send the same request again". */
+  sent: SentRequest;
   onDismiss: () => void;
 }
 
 /** What ledgerd accepted: the transaction, each posting, and the balance after each. */
-export function ResultView({ transaction, accounts, onDismiss }: ResultViewProps) {
+export function ResultView({ transaction, accounts, sent, onDismiss }: ResultViewProps) {
   const code = (id: string): string => accounts.find((a) => a.id === id)?.code ?? id.slice(0, 8);
 
   return (
@@ -67,6 +71,7 @@ export function ResultView({ transaction, accounts, onDismiss }: ResultViewProps
         </tbody>
       </Table>
       <p className="text-sm">The balances of these accounts have been updated.</p>
+      <IdempotencyPanel sent={sent} accounts={accounts} />
       <div>
         <Button onClick={onDismiss}>Dismiss</Button>
       </div>
