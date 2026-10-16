@@ -61,6 +61,20 @@ describe('the Failure Lab page', () => {
     expect(overdraftSection()).toBeInTheDocument();
   });
 
+  it('offers the seven scenarios, each with its own run button', async () => {
+    await open();
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Overdraft is refused and nothing changes',
+      'A retried request is a replay, not a second effect',
+      'The same key with a different request is refused',
+      'An unbalanced transaction is refused',
+      'An amount sent as a JSON number is refused',
+      'Huge amounts are exact, and the limit is enforced',
+      'A transaction cannot be reversed twice',
+    ]);
+    expect(screen.getAllByRole('button', { name: 'Run this scenario' })).toHaveLength(7);
+  });
+
   it('lists the scenarios with what each one tries', async () => {
     await open();
     expect(overdraftSection()).toHaveTextContent('Funds a wallet that may not go negative');
@@ -82,7 +96,7 @@ describe('running a scenario (R9.2 to R9.4)', () => {
       .getAllByRole('heading', { level: 3 })
       .map((h) => h.textContent);
     expect(steps).toEqual([
-      'Step 1: Create two lab accounts',
+      'Step 1: Create lab accounts',
       'Step 2: Fund the wallet with 100.00',
       'Step 3: Try to withdraw 101.00',
       'Step 4: Check that nothing changed',

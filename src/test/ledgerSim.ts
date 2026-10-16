@@ -34,6 +34,20 @@ export interface Faults {
   allowOverdraft: boolean;
   /** Refuses an overdraft, but only after applying it (a half-done transaction). */
   applyBeforeRefusing: boolean;
+  /** Takes an amount sent as a JSON number. */
+  acceptNumberAmounts: boolean;
+  /** Keeps amounts as floating-point numbers, losing digits above 2^53. */
+  lossyAmounts: boolean;
+  /** Accepts amounts above 10^30. */
+  noAmountLimit: boolean;
+  /** Forgets the idempotency key at once: a repeat is carried out again. */
+  ignoreIdempotency: boolean;
+  /** Carries out a request whose key was used with a different body. */
+  ignoreKeyReuse: boolean;
+  /** Accepts debits that differ from credits. */
+  skipBalanceCheck: boolean;
+  /** Lets a transaction be reversed again and again. */
+  allowDoubleReversal: boolean;
 }
 
 export interface LedgerSim {
@@ -101,7 +115,17 @@ export function createLedgerSim(): LedgerSim {
   let failure: Response | undefined;
 
   const sim: LedgerSim = {
-    faults: { allowOverdraft: false, applyBeforeRefusing: false },
+    faults: {
+      allowOverdraft: false,
+      applyBeforeRefusing: false,
+      acceptNumberAmounts: false,
+      lossyAmounts: false,
+      noAmountLimit: false,
+      ignoreIdempotency: false,
+      ignoreKeyReuse: false,
+      skipBalanceCheck: false,
+      allowDoubleReversal: false,
+    },
     requests: [],
     accountReads: [],
     delayMs: 0,
@@ -147,12 +171,49 @@ export function createLedgerSim(): LedgerSim {
     request: S['CreateTransactionRequest'],
     reversesId: string | null,
   ): { ok: true; transaction: S['Transaction'] } | { ok: false; response: Response } {
+    // The shape of every amount, as ledgerd checks it: a string of digits, 1 to 10^30.
+    const badAmounts = request.postings.flatMap((p, i) => {
+      const raw: unknown = p.amount;
+      const isDigits = typeof raw === 'string' && /^[1-9][0-9]{0,30}$/.test(raw);
+      const ok =
+        (isDigits && (BigInt(raw) <= 10n ** 30n || sim.faults.noAmountLimit)) ||
+        (sim.faults.acceptNumberAmounts && typeof raw === 'number') ||
+        (sim.faults.noAmountLimit && typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw));
+      return ok
+        ? []
+        : [
+            {
+              field: `postings[${String(i)}].amount`,
+              message: 'must be a JSON string of decimal digits between 1 and 10^30',
+            },
+          ];
+    });
+    if (badAmounts.length > 0) {
+      return {
+        ok: false,
+        response: problem(
+          'validation_error',
+          'Validation failed',
+          422,
+          'one or more fields are invalid',
+          badAmounts,
+        ),
+      };
+    }
+    // What is stored: the exact digits, unless the sim is told to behave like a float.
+    const amountOf = (raw: unknown): bigint => {
+      if (typeof raw === 'number') return BigInt(Math.trunc(raw));
+      const text = String(raw);
+      return sim.faults.lossyAmounts ? BigInt(Number(text)) : BigInt(text);
+    };
+    const amounts = request.postings.map((p) => amountOf(p.amount));
+
     const debits = new Map<string, bigint>();
-    for (const p of request.postings) {
-      const delta = BigInt(p.amount) * (p.direction === 'DEBIT' ? 1n : -1n);
+    for (const [i, p] of request.postings.entries()) {
+      const delta = (amounts[i] ?? 0n) * (p.direction === 'DEBIT' ? 1n : -1n);
       debits.set(p.currency, (debits.get(p.currency) ?? 0n) + delta);
     }
-    const off = [...debits].find(([, d]) => d !== 0n);
+    const off = sim.faults.skipBalanceCheck ? undefined : [...debits].find(([, d]) => d !== 0n);
     if (off !== undefined) {
       return {
         ok: false,
@@ -195,8 +256,8 @@ export function createLedgerSim(): LedgerSim {
       const before = running.get(p.account_id) ?? target.balance;
       const after =
         p.direction === target.account.normal_balance
-          ? before + BigInt(p.amount)
-          : before - BigInt(p.amount);
+          ? before + (amounts[i] ?? 0n)
+          : before - (amounts[i] ?? 0n);
       running.set(p.account_id, after);
       postingCounter += 1;
       lines.push({
@@ -204,7 +265,7 @@ export function createLedgerSim(): LedgerSim {
         transaction_id: id,
         account_id: p.account_id,
         direction: p.direction,
-        amount: p.amount,
+        amount: (amounts[i] ?? 0n).toString(),
         currency: p.currency,
         balance_after: after.toString(),
         recorded_at: TIME,
@@ -271,9 +332,9 @@ export function createLedgerSim(): LedgerSim {
       );
     }
     const fingerprint = `${scope}\n${JSON.stringify(body)}`;
-    const remembered = keys.get(key);
+    const remembered = sim.faults.ignoreIdempotency ? undefined : keys.get(key);
     if (remembered !== undefined) {
-      if (remembered.fingerprint !== fingerprint) {
+      if (remembered.fingerprint !== fingerprint && !sim.faults.ignoreKeyReuse) {
         return problem(
           'idempotency_key_reuse',
           'Idempotency key reused with a different request',
@@ -281,13 +342,15 @@ export function createLedgerSim(): LedgerSim {
           'this Idempotency-Key was already used with a different request',
         );
       }
-      return HttpResponse.json(remembered.transaction, {
-        status: 201,
-        headers: {
-          'Idempotent-Replayed': 'true',
-          Location: `/v1/transactions/${remembered.transaction.id}`,
-        },
-      });
+      if (remembered.fingerprint === fingerprint) {
+        return HttpResponse.json(remembered.transaction, {
+          status: 201,
+          headers: {
+            'Idempotent-Replayed': 'true',
+            Location: `/v1/transactions/${remembered.transaction.id}`,
+          },
+        });
+      }
     }
     const outcome = run();
     if (!outcome.ok) return outcome.response; // a refusal does not use the key up
@@ -389,7 +452,7 @@ export function createLedgerSim(): LedgerSim {
               ok: false,
               response: problem('not_found', 'Not found', 404, 'transaction not found'),
             };
-          if (reversed.has(id)) {
+          if (reversed.has(id) && !sim.faults.allowDoubleReversal) {
             return {
               ok: false,
               response: problem(

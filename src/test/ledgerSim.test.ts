@@ -194,4 +194,135 @@ describe('the ledger sim, used through the real API client', () => {
     await createTransaction(move(a.id, b.id, '1'), 'k'); // the failure used up nothing
     expect(sim.transactions()).toHaveLength(1);
   });
+
+  describe('amounts', () => {
+    const pair = (debit: unknown, a: string, b: string) => ({
+      postings: [
+        { account_id: a, direction: 'DEBIT' as const, amount: debit as string, currency: 'USD' },
+        { account_id: b, direction: 'CREDIT' as const, amount: '100', currency: 'USD' },
+      ],
+    });
+
+    it('takes only strings of digits, and names the field when it is not one', async () => {
+      const a = sim.addAccount({ code: 'a', allow_negative: true });
+      const b = sim.addAccount({ code: 'b', allow_negative: true });
+      for (const [i, bad] of [100, '0', '-5', '007', '1.50', '', ' 5', null, true].entries()) {
+        const error = await refusal(createTransaction(pair(bad, a.id, b.id), `key-${String(i)}`));
+        expect(error.code, JSON.stringify(bad)).toBe('validation_error');
+        expect(error.fieldErrors).toHaveProperty(['postings[0].amount']);
+      }
+      expect(sim.transactions()).toHaveLength(0);
+    });
+
+    it('is exact up to 10^30 and refuses one more', async () => {
+      const bank = sim.addAccount({ code: 'bank', allow_negative: true });
+      const wallet = sim.addAccount({
+        code: 'wallet',
+        normal_balance: 'CREDIT',
+        type: 'LIABILITY',
+      });
+      const big = (10n ** 30n).toString();
+      const tx = (amount: string) => ({
+        postings: [
+          { account_id: bank.id, direction: 'DEBIT' as const, amount, currency: 'USD' },
+          { account_id: wallet.id, direction: 'CREDIT' as const, amount, currency: 'USD' },
+        ],
+      });
+      await createTransaction(tx('9007199254740993'), 'a');
+      expect(sim.balanceOf(wallet.id)).toBe(9007199254740993n);
+      await createTransaction(tx(big), 'b');
+      expect(sim.balanceOf(wallet.id)).toBe(9007199254740993n + 10n ** 30n);
+      expect((await refusal(createTransaction(tx((10n ** 30n + 1n).toString()), 'c'))).code).toBe(
+        'validation_error',
+      );
+    });
+  });
+
+  describe('faults, which make it misbehave on purpose', () => {
+    const accountsAndBody = (amount = '100', walletMayGoNegative = false) => {
+      const bank = sim.addAccount({ code: `bank-${amount}`, allow_negative: true });
+      const wallet = sim.addAccount({
+        code: `wallet-${amount}`,
+        normal_balance: 'CREDIT',
+        type: 'LIABILITY',
+        allow_negative: walletMayGoNegative,
+      });
+      return {
+        bank,
+        wallet,
+        body: {
+          postings: [
+            { account_id: bank.id, direction: 'DEBIT' as const, amount, currency: 'USD' },
+            { account_id: wallet.id, direction: 'CREDIT' as const, amount, currency: 'USD' },
+          ],
+        },
+      };
+    };
+
+    it('are all off by default', () => {
+      expect(Object.values(sim.faults).every((v) => v === false)).toBe(true);
+    });
+
+    it('lossyAmounts loses digits above 2^53', async () => {
+      sim.faults.lossyAmounts = true;
+      const { wallet, body } = accountsAndBody('9007199254740993');
+      await createTransaction(body, 'k');
+      expect(sim.balanceOf(wallet.id)).toBe(9007199254740992n);
+    });
+
+    it('acceptNumberAmounts takes a JSON number', async () => {
+      sim.faults.acceptNumberAmounts = true;
+      const { body, wallet } = accountsAndBody();
+      await createTransaction(
+        {
+          postings: [{ ...body.postings[0], amount: 100 as unknown as string }, body.postings[1]],
+        } as typeof body,
+        'k',
+      );
+      expect(sim.balanceOf(wallet.id)).toBe(100n);
+    });
+
+    it('noAmountLimit takes more than 10^30', async () => {
+      sim.faults.noAmountLimit = true;
+      const { body, wallet } = accountsAndBody((10n ** 30n + 1n).toString());
+      await createTransaction(body, 'k');
+      expect(sim.balanceOf(wallet.id)).toBe(10n ** 30n + 1n);
+    });
+
+    it('skipBalanceCheck takes an unbalanced transaction', async () => {
+      sim.faults.skipBalanceCheck = true;
+      const { body, wallet } = accountsAndBody();
+      await createTransaction(
+        { postings: [body.postings[0], { ...body.postings[1], amount: '99' }] } as typeof body,
+        'k',
+      );
+      expect(sim.balanceOf(wallet.id)).toBe(99n);
+    });
+
+    it('ignoreIdempotency carries out a repeat again', async () => {
+      sim.faults.ignoreIdempotency = true;
+      const { body, wallet } = accountsAndBody();
+      await createTransaction(body, 'k');
+      const second = await createTransaction(body, 'k');
+      expect(second.replayed).toBe(false);
+      expect(sim.balanceOf(wallet.id)).toBe(200n);
+    });
+
+    it('ignoreKeyReuse carries out a different request under a used key', async () => {
+      sim.faults.ignoreKeyReuse = true;
+      const first = accountsAndBody('100');
+      await createTransaction(first.body, 'k');
+      const other = { postings: first.body.postings.map((p) => ({ ...p, amount: '250' })) };
+      await createTransaction(other, 'k');
+      expect(sim.balanceOf(first.wallet.id)).toBe(350n);
+    });
+
+    it('allowDoubleReversal lets a transaction be reversed again', async () => {
+      sim.faults.allowDoubleReversal = true;
+      const { body } = accountsAndBody('100', true);
+      const { data } = await createTransaction(body, 'k');
+      await reverseTransaction(data.id, 'r1');
+      expect((await reverseTransaction(data.id, 'r2')).replayed).toBe(false);
+    });
+  });
 });

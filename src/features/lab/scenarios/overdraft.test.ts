@@ -20,7 +20,7 @@ describe('scenario a: overdraft', () => {
     const result = await run();
     expect(result.verdict).toBe('as-designed');
     expect(result.steps.map((s) => s.title)).toEqual([
-      'Create two lab accounts',
+      'Create lab accounts',
       'Fund the wallet with 100.00',
       'Try to withdraw 101.00',
       'Check that nothing changed',

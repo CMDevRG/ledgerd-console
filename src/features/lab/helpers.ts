@@ -1,6 +1,5 @@
-import { check } from './steps';
+import { check, type Run, type StepContext } from './steps';
 import type { Check, Exchange } from './types';
-import type { StepContext } from './steps';
 
 /**
  * The problem code of an exchange, if it was an error with a problem document. (A successful
@@ -102,4 +101,91 @@ export function transfer(
       { account_id: credit, direction: 'CREDIT', amount, currency },
     ],
   };
+}
+
+/** The kinds of lab account: a bank may go negative (it pays out); a wallet may not. */
+export type LabAccountKind = 'bank' | 'wallet';
+
+const KIND = {
+  bank: { type: 'ASSET', normalBalance: 'DEBIT', allowNegative: true },
+  wallet: { type: 'LIABILITY', normalBalance: 'CREDIT', allowNegative: false },
+} as const;
+
+/**
+ * A step that creates lab accounts `lab-<run>-<name>`. It returns the ids by name (an empty
+ * string where creation failed, which the following checks will then show).
+ */
+export async function createAccountsStep(
+  run: Run,
+  runId: string,
+  accounts: readonly { name: string; kind: LabAccountKind }[],
+  explanation?: string,
+): Promise<Record<string, string>> {
+  const ids: Record<string, string> = {};
+  await run.step(
+    accounts.length === 1 ? 'Create a lab account' : 'Create lab accounts',
+    explanation ??
+      "A bank account (an asset that may go negative, so it can pay out) and a wallet (a liability whose balance may not go below zero). Their codes start with lab- and this run's id, so they never touch your other accounts.",
+    async (ctx) => {
+      const checks: Check[] = [];
+      for (const { name, kind } of accounts) {
+        const made = await createLabAccount(ctx, runId, name, KIND[kind]);
+        ids[name] = made.account?.id ?? '';
+        checks.push(expectAnswer(`${name} created`, '201', made.exchange));
+      }
+      return checks;
+    },
+  );
+  return ids;
+}
+
+/** Reverses a transaction, recording the request. */
+export function reverse(ctx: StepContext, transactionId: string, key: string): Promise<Exchange> {
+  return ctx.send({
+    method: 'POST',
+    path: `/v1/transactions/${transactionId}/reverse`,
+    idempotencyKey: key,
+  });
+}
+
+/** Sends a transaction, recording the request. */
+export function postTransaction(ctx: StepContext, key: string, body: unknown): Promise<Exchange> {
+  return ctx.send({ method: 'POST', path: '/v1/transactions', idempotencyKey: key, body });
+}
+
+/** A response header as the exchange recorded it, or "absent". */
+export const headerOf = (exchange: Exchange, name: string): string =>
+  exchange.responseHeaders[name] ?? 'absent';
+
+/** The fields named by the errors of a validation problem, as one string. */
+export function errorFields(exchange: Exchange): string {
+  const body = exchange.responseBody;
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('errors' in body) ||
+    !Array.isArray(body.errors)
+  ) {
+    return 'none';
+  }
+  const fields = body.errors.flatMap((e: unknown) =>
+    typeof e === 'object' && e !== null && 'field' in e && typeof e.field === 'string'
+      ? [e.field]
+      : [],
+  );
+  return fields.length === 0 ? 'none' : fields.join(', ');
+}
+
+/** The balance as text, for a check ("unreadable" if it could not be read). */
+export async function balanceText(ctx: StepContext, accountId: string): Promise<string> {
+  return (await readBalance(ctx, accountId)).balance ?? 'unreadable';
+}
+
+/**
+ * A check that an error names a field. The error may name others too (a refused amount is
+ * reported on every posting that has one), so the field only has to be among those named.
+ */
+export function namesField(exchange: Exchange, field: string): Check {
+  const named = errorFields(exchange);
+  return check('The error names the field', field, named, named.split(', ').includes(field));
 }
