@@ -40,7 +40,8 @@ export interface ApiResult<T> {
 }
 
 /**
- * The only function in the application that calls `fetch`.
+ * One of the two functions in the application that call `fetch` (the other is
+ * {@link rawRequest}, for the Failure Lab); both live in this file.
  *
  * It returns the parsed body or throws an {@link ApiError} of one of four kinds. A body
  * that does not match `schema` is an error (`unexpected`), never a value: the response is
@@ -138,4 +139,80 @@ function failure(response: Response, body: unknown, requestId: string | undefine
 function retryAfterSeconds(header: string | null): number | undefined {
   if (header === null || !/^\d{1,5}$/.test(header)) return undefined;
   return Number.parseInt(header, 10);
+}
+
+/** What ledgerd (through the console server) answered, as received, whatever the status. */
+export interface RawResponse {
+  status: number;
+  /** Header names in lower case. */
+  headers: Record<string, string>;
+  /** The parsed JSON body, or the text if it was not JSON, or undefined if there was none. */
+  body: unknown;
+  /** Milliseconds from sending to the end of the body. */
+  ms: number;
+}
+
+export interface RawRequestOptions {
+  method: 'GET' | 'POST';
+  path: string;
+  headers?: Record<string, string>;
+  /** Sent as JSON text. */
+  body?: unknown;
+  timeoutMs?: number;
+  signal?: AbortSignal | undefined;
+}
+
+/**
+ * Sends a request and returns the answer as it is, an HTTP error included. It is for the
+ * Failure Lab, which wants to show exactly what ledgerd said. (The rest of the application
+ * uses {@link request}, which turns failures into errors.) It throws an {@link ApiError} of kind
+ * `network` only when there is no answer at all.
+ */
+export async function rawRequest(options: RawRequestOptions): Promise<RawResponse> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const headers = new Headers({ Accept: 'application/json, application/problem+json' });
+  if (options.method !== 'GET') headers.set(CONSOLE_HEADER, '1');
+  if (options.body !== undefined) headers.set('Content-Type', 'application/json');
+  for (const [name, value] of Object.entries(options.headers ?? {})) headers.set(name, value);
+
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+  const started = performance.now();
+
+  let response: Response;
+  let text: string;
+  try {
+    response = await fetch(new URL(API_PREFIX + options.path, window.location.origin), {
+      method: options.method,
+      headers,
+      signal,
+      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+    });
+    text = await response.text();
+  } catch (cause) {
+    if (options.signal?.aborted === true) throw cause;
+    throw new ApiError(
+      'network',
+      timeout.aborted
+        ? `The request took longer than ${String(timeoutMs / 1000)} seconds and was cancelled.`
+        : 'The console could not reach the server.',
+    );
+  }
+
+  let body: unknown = text === '' ? undefined : text;
+  try {
+    if (text !== '') body = JSON.parse(text);
+  } catch {
+    // Not JSON: keep the text.
+  }
+  const received: Record<string, string> = {};
+  response.headers.forEach((value, name) => {
+    received[name.toLowerCase()] = value;
+  });
+  return {
+    status: response.status,
+    headers: received,
+    body,
+    ms: Math.round(performance.now() - started),
+  };
 }

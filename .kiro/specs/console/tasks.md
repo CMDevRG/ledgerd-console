@@ -71,11 +71,11 @@ Console tasks that need them say so.
 
 ## Phase 4 — Failure Lab, reconciliation, benchmark
 
-- [ ] 15. Failure Lab core
-  - Types, the recording API wrapper, the runner UI and exchange viewer, a fake in-memory ledger implementing the rules.
+- [x] 15. Failure Lab core
+  - Types, the recording API wrapper, the runner UI and exchange viewer, a fake in-memory ledger implementing the rules. Scenario a (overdraft) was built with it, to prove the whole path with a real scenario; the sim gained switchable faults so checks can be shown to fail.
   - _R9.2–R9.4, R9.6, R9.7_
-- [ ] 16. Scenarios a to g
-  - One pure function each, with a test against the fake ledger and a test with a deliberately wrong fake proving each check can fail.
+- [ ] 16. Scenarios b to g
+  - One pure function each (a is done), with a test against the fake ledger and a test with a deliberately wrong fake proving each check can fail.
   - _R9.1_
 - [ ] 17. Scenario h (concurrency)
   - Parallel requests, in-flight counter, the explanation about browser limits.

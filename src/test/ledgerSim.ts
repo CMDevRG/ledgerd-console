@@ -24,7 +24,21 @@ export interface SimRequest {
   body: unknown;
 }
 
+/**
+ * Ways to make the sim behave wrongly, on purpose. A Lab scenario must be able to tell a ledger
+ * that keeps its promises from one that does not; tests turn these on to prove that each check
+ * can fail.
+ */
+export interface Faults {
+  /** Lets an account that may not go negative go negative. */
+  allowOverdraft: boolean;
+  /** Refuses an overdraft, but only after applying it (a half-done transaction). */
+  applyBeforeRefusing: boolean;
+}
+
 export interface LedgerSim {
+  /** Behaviour switches for tests of the Lab: all off by default. */
+  faults: Faults;
   /** Every write the sim received, in order. */
   requests: SimRequest[];
   /** The id of every account read with GET /v1/accounts/{id}, in order. */
@@ -87,6 +101,7 @@ export function createLedgerSim(): LedgerSim {
   let failure: Response | undefined;
 
   const sim: LedgerSim = {
+    faults: { allowOverdraft: false, applyBeforeRefusing: false },
     requests: [],
     accountReads: [],
     delayMs: 0,
@@ -197,7 +212,18 @@ export function createLedgerSim(): LedgerSim {
     }
     for (const [accountId, balance] of running) {
       const a = accounts.get(accountId);
-      if (a !== undefined && !a.account.allow_negative && balance < 0n) {
+      if (
+        a !== undefined &&
+        !a.account.allow_negative &&
+        balance < 0n &&
+        !sim.faults.allowOverdraft
+      ) {
+        if (sim.faults.applyBeforeRefusing) {
+          for (const [id, b] of running) {
+            const target = accounts.get(id);
+            if (target !== undefined) target.balance = b;
+          }
+        }
         return {
           ok: false,
           response: problem(

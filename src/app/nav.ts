@@ -11,5 +11,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/accounts', label: 'Accounts' },
   { to: '/transactions', label: 'Transactions', end: true },
   { to: '/transactions/new', label: 'New transaction' },
+  { to: '/lab', label: 'Failure Lab' },
   { to: '/settings', label: 'Settings' },
 ];
