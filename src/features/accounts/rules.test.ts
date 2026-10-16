@@ -195,10 +195,14 @@ describe('filters', () => {
     expect(validateFilters({ code: '', currency: '' })).toEqual({});
     expect(validateFilters({ code: 'assets:', currency: 'USD' })).toEqual({});
     expect(validateFilters({ code: 'has space', currency: 'usd' })).toEqual({
-      code: 'Use letters, digits, . _ : or - (up to 64)',
+      code: 'Start with a letter or digit; then letters, digits, . _ : or - (up to 64)',
       currency: 'Use 2 to 10 capital letters or digits, such as USD',
     });
     expect(validateFilters({ code: 'x'.repeat(65), currency: '' }).code).toBeDefined();
+    // ledgerd's code_prefix pattern starts with a letter or digit, like a code.
+    for (const prefix of ['-x', '.x', '_x', ':x']) {
+      expect(validateFilters({ code: prefix, currency: '' }).code, prefix).toBeDefined();
+    }
   });
 
   it('matches an account the way the server filters: prefix and exact currency', () => {

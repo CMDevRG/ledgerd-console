@@ -8,6 +8,7 @@ import { Layout } from './Layout';
 const OverviewPage = lazy(() => import('../features/overview/OverviewPage'));
 const AccountsPage = lazy(() => import('../features/accounts/AccountsPage'));
 const AccountDetailPage = lazy(() => import('../features/accounts/AccountDetailPage'));
+const BuilderPage = lazy(() => import('../features/transactions/BuilderPage'));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
 const NotFoundPage = lazy(() => import('./NotFoundPage'));
 
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <OverviewPage /> },
       { path: 'accounts', element: <AccountsPage /> },
       { path: 'accounts/:id', element: <AccountDetailPage /> },
+      { path: 'transactions/new', element: <BuilderPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

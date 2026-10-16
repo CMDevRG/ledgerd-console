@@ -122,9 +122,10 @@ export type FilterErrors = Partial<Record<keyof AccountFilters, string>>;
 
 export function validateFilters(filters: AccountFilters): FilterErrors {
   const errors: FilterErrors = {};
-  // A prefix: any start of a valid code, so the same alphabet, up to 64 characters.
-  if (filters.code !== '' && !/^[A-Za-z0-9._:-]{1,64}$/.test(filters.code)) {
-    errors.code = 'Use letters, digits, . _ : or - (up to 64)';
+  // ledgerd takes a prefix in the shape of a code (openapi: code_prefix), so one that starts
+  // with a dot or a dash is refused there and must not be sent.
+  if (filters.code !== '' && !ACCOUNT_CODE_PATTERN.test(filters.code)) {
+    errors.code = 'Start with a letter or digit; then letters, digits, . _ : or - (up to 64)';
   }
   if (filters.currency !== '' && !CURRENCY_PATTERN.test(filters.currency)) {
     errors.currency = CURRENCY_RULE;

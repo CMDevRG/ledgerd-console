@@ -10,13 +10,13 @@ export const PAGE_SIZE = 50;
  * asked for; the ones already loaded are kept. The filters are ledgerd's own (a code prefix and
  * a currency), so they apply to every account and not only to the ones loaded so far.
  */
-export function useAccountsList(filters: AccountFilters, enabled: boolean) {
+export function useAccountsList(filters: AccountFilters, enabled: boolean, pageSize = PAGE_SIZE) {
   return useInfiniteQuery({
-    queryKey: ['accounts', filters],
+    queryKey: ['accounts', filters, pageSize],
     queryFn: ({ pageParam, signal }) =>
       listAccounts(
         {
-          limit: PAGE_SIZE,
+          limit: pageSize,
           ...(pageParam !== undefined ? { cursor: pageParam } : {}),
           ...(filters.code !== '' ? { codePrefix: filters.code } : {}),
           ...(filters.currency !== '' ? { currency: filters.currency } : {}),

@@ -62,7 +62,7 @@ Console tasks that need them say so.
 - [x] 12. Account detail
   - Attributes and balance with polling, as-of control and URL state, history with "load more", the note on intermediate rows.
   - _R4_
-- [ ] 13. Transaction builder
+- [x] 13. Transaction builder
   - Reducer and selectors (property-tested), the editor, live per-currency totals, the unbalanced warning, submission, result view with balances after.
   - _R6_
 - [ ] 14. Idempotency panel and reversal
