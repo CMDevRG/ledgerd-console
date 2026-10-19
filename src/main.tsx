@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
+import './app/zod';
 import { Providers, createQueryClient } from './app/Providers';
 import { createAppRouter } from './app/router';
 import './index.css';

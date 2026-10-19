@@ -89,7 +89,7 @@ Console tasks that need them say so.
 
 ## Phase 5 — Quality, packaging, release
 
-- [ ] 20. Build checks
+- [x] 20. Build checks
   - Server bundle with esbuild; the canary-key scan of the emitted files; the inline script and style check; `npm audit` gate.
   - _R2.6, R15.4, R15.7_
 - [ ] 21. Container and compose
