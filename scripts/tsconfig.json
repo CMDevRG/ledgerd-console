@@ -1,0 +1,5 @@
+{
+  "extends": "../server/tsconfig.json",
+  "compilerOptions": { "resolveJsonModule": true },
+  "include": [".", "../src/features/benchmark/schema.ts"]
+}

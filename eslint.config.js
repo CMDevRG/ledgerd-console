@@ -70,7 +70,7 @@ export default tseslint.config(
 
   // The console server runs on Node, not in a browser.
   {
-    files: ['server/**/*.ts'],
+    files: ['server/**/*.ts', 'scripts/**/*.ts'],
     languageOptions: { globals: globals.node },
   },
 

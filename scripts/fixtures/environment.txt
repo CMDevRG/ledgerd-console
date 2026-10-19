@@ -1,0 +1,11 @@
+date:        2026-10-14T14:55:32Z
+commit:      7389ee7
+host OS:     Linux 6.18.33.2-microsoft-standard-WSL2
+CPU:         AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx (8 logical cores visible)
+memory:      6.7 GiB visible to this environment
+docker:      29.7.2 (linux/amd64)
+docker VM:   8 CPUs, Docker Desktop
+postgres:    postgres (PostgreSQL) 16.15
+ledgerd:     ledgerd 7389ee7 (7389ee79b4a7)
+db pool:     LEDGERD_DB_MAX_CONNS=20 (default)
+storage:     PostgreSQL data on a Docker named volume (default fsync/synchronous_commit settings)

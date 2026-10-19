@@ -83,7 +83,7 @@ Console tasks that need them say so.
 - [x] 18. Reconciliation page
   - Run, progress, report, mismatch and chain-break tables, session history and comparison, stale-report protection.
   - _R10_
-- [ ] 19. Benchmark view
+- [x] 19. Benchmark view
   - Data file with schema and checker, the k6 importer, `SvgBarChart` with accessible tables, the page and its explanations.
   - _R11_
 

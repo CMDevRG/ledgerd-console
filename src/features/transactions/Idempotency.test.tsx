@@ -47,13 +47,22 @@ const posted = () => screen.findByRole('region', { name: /Transaction posted/ })
 describe('the key', () => {
   it('is shown before sending, as a version 4 UUID, and is what is sent', async () => {
     const user = userEvent.setup();
-    const { container } = await open();
+    await open();
     const shown = (keyField() as HTMLInputElement).value;
     expect(shown).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     await fill(user);
     await send(user);
     await posted();
     expect(sim.requests[0]?.key).toBe(shown);
+  });
+
+  it('has no accessibility violations, with the key field and after a post', async () => {
+    const user = userEvent.setup();
+    const { container } = await open();
+    await expectNoAccessibilityViolations(container);
+    await fill(user);
+    await send(user);
+    await posted();
     await expectNoAccessibilityViolations(container);
   });
 

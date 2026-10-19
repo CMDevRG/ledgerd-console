@@ -13,6 +13,7 @@ const LookupPage = lazy(() => import('../features/transactions/LookupPage'));
 const TransactionPage = lazy(() => import('../features/transactions/TransactionPage'));
 const LabPage = lazy(() => import('../features/lab/LabPage'));
 const ReconciliationPage = lazy(() => import('../features/reconciliation/ReconciliationPage'));
+const BenchmarkPage = lazy(() => import('../features/benchmark/BenchmarkPage'));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
 const NotFoundPage = lazy(() => import('./NotFoundPage'));
 
@@ -43,6 +44,7 @@ export const routes: RouteObject[] = [
       { path: 'transactions/:id', element: <TransactionPage /> },
       { path: 'lab', element: <LabPage /> },
       { path: 'reconciliation', element: <ReconciliationPage /> },
+      { path: 'benchmark', element: <BenchmarkPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

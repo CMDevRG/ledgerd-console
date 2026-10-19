@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "ledgerdCommit": "7389ee7",
+    "date": "2026-10-14T14:55:32Z",
+    "load": "k6 2.3.0, 40 virtual users per scenario, 20 s per scenario",
+    "secondsPerScenario": 20
+  },
+  "environment": {
+    "hardware": "AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx (8 logical cores visible)",
+    "memory": "6.7 GiB visible to this environment",
+    "os": "Linux 6.18.33.2-microsoft-standard-WSL2",
+    "containerRuntime": "Docker 29.7.2 (linux/amd64); 8 CPUs, Docker Desktop",
+    "postgres": "PostgreSQL 16.15",
+    "configuration": "LEDGERD_DB_MAX_CONNS=20 (default)",
+    "storage": "PostgreSQL data on a Docker named volume (default fsync/synchronous_commit settings)"
+  },
+  "notes": [
+    "The 40 virtual-user rows come from the k6 summary of that run (imported with scripts/import-k6.ts). The 10 and 20 virtual-user rows are the figures published in ledgerd's README for the same commit and conditions, where the 90th percentile and the maximum were not given, so they are recorded as null.",
+    "Run-to-run variation is about 15 percent: two sweeps of the spread scenario gave between 197 and 274 transfers per second."
+  ],
+  "runs": [
+    {
+      "scenario": "spread",
+      "virtualUsers": 10,
+      "transfersPerSecond": 210,
+      "p50": 41,
+      "p90": null,
+      "p95": 85,
+      "p99": 145,
+      "maxMs": null,
+      "failedPercent": 0
+    },
+    {
+      "scenario": "hot",
+      "virtualUsers": 10,
+      "transfersPerSecond": 69,
+      "p50": 147,
+      "p90": null,
+      "p95": 312,
+      "p99": 458,
+      "maxMs": null,
+      "failedPercent": 0
+    },
+    {
+      "scenario": "spread",
+      "virtualUsers": 20,
+      "transfersPerSecond": 216,
+      "p50": 80,
+      "p90": null,
+      "p95": 173,
+      "p99": 262,
+      "maxMs": null,
+      "failedPercent": 0
+    },
+    {
+      "scenario": "hot",
+      "virtualUsers": 20,
+      "transfersPerSecond": 75,
+      "p50": 298,
+      "p90": null,
+      "p95": 571,
+      "p99": 798,
+      "maxMs": null,
+      "failedPercent": 0
+    },
+    {
+      "scenario": "spread",
+      "virtualUsers": 40,
+      "transfersPerSecond": 274.4,
+      "p50": 137.3,
+      "p90": 189.7,
+      "p95": 214.8,
+      "p99": 294.6,
+      "maxMs": 486.4,
+      "failedPercent": 0
+    },
+    {
+      "scenario": "hot",
+      "virtualUsers": 40,
+      "transfersPerSecond": 79.7,
+      "p50": 511.2,
+      "p90": 632.2,
+      "p95": 708.8,
+      "p99": 856.2,
+      "maxMs": 1185.2,
+      "failedPercent": 0
+    }
+  ]
+}

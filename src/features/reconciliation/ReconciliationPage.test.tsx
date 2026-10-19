@@ -141,13 +141,38 @@ describe('running (R10.1)', () => {
   });
 
   it('does not start a second run while one is going', async () => {
-    sim.reconcileDelayMs = 200;
+    // The answer is held back until the test lets it go, so the second click always comes while
+    // the first run is still going, however slowly this machine clicks.
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    server.use(
+      http.post('*/api/v1/reconciliations', async () => {
+        calls += 1;
+        await gate;
+        return HttpResponse.json({
+          started_at: '2026-10-13T16:00:01.000000Z',
+          deep: false,
+          ok: true,
+          accounts_checked: 2,
+          mismatches: [],
+          currencies: [],
+          chain_breaks: [],
+        });
+      }),
+    );
     const user = userEvent.setup();
     await open();
     await runIt(user);
+    await screen.findByText(/Running a standard reconciliation/);
     await runIt(user);
+    await runIt(user);
+    expect(calls).toBe(1);
+    release();
     await report();
-    expect(sim.reconciliations).toHaveLength(1);
+    expect(calls).toBe(1);
   });
 
   it('the hook itself refuses a second run while one is going, whatever the buttons do', async () => {
