@@ -6,6 +6,7 @@ import { server } from '../../../test/server';
 import { createLabApi } from '../api';
 import { fixedIds } from '../testkit';
 import type { Check, Scenario, ScenarioResult } from '../types';
+import { concurrency, PAYABLE, WITHDRAWALS } from './concurrency';
 import { doubleReversal } from './doubleReversal';
 import { SCENARIOS } from './index';
 import { keyReuse } from './keyReuse';
@@ -100,6 +101,7 @@ describe('every scenario', () => {
       'number-amount',
       'precision',
       'double-reversal',
+      'concurrency',
     ]);
   });
 });
@@ -127,13 +129,18 @@ describe('against a ledger that breaks its promises', () => {
       ['Number amount refused', 'The error names the field', 'Wallet balance', 'Bank balance'],
     ],
     [doubleReversal, 'allowDoubleReversal', ['Second reversal refused']],
+    [
+      concurrency,
+      'staleOverdraftCheck',
+      ['Accepted', 'Refused for insufficient funds', 'Wallet balance', 'Bank balance'],
+    ],
   ];
 
   it.each(
-    broken.map(([scenario, fault, labels]) => [scenario.title, scenario, fault, labels] as const),
+    broken.map(([scenario, fault, labels]) => [scenario.title, fault, scenario, labels] as const),
   )(
     '%s: unexpected with the %s fault, naming what broke',
-    async (_title, scenario, fault, labels) => {
+    async (_title, fault, scenario, labels) => {
       sim.faults[fault] = true;
       const result = await run(scenario);
       expect(result.verdict).toBe('unexpected');
@@ -201,6 +208,68 @@ describe('against a ledger that breaks its promises', () => {
       'Balance of that account',
     ]);
     expect(failed(result)[0]).toMatchObject({ expected: '422 validation_error', actual: '201' });
+  });
+});
+
+describe('scenario h: concurrency', () => {
+  it('sends all the withdrawals before any answer arrives, and exactly ten are accepted', async () => {
+    const result = await run(concurrency);
+    expect(result.verdict).toBe('as-designed');
+    const withdrawals = result.steps[2]?.exchanges ?? [];
+    expect(withdrawals).toHaveLength(WITHDRAWALS);
+    expect(withdrawals.filter((e) => e.status === 201)).toHaveLength(PAYABLE);
+    expect(withdrawals.filter((e) => e.status === 422)).toHaveLength(WITHDRAWALS - PAYABLE);
+    // Thirty different keys: they are thirty different requests, not retries of one.
+    const keys = new Set(withdrawals.map((e) => e.requestHeaders['idempotency-key']));
+    expect(keys.size).toBe(WITHDRAWALS);
+    expect(sim.transactions()).toHaveLength(1 + PAYABLE);
+  });
+
+  it('says how many were accepted and refused, and what the browser limit means (R9.5)', async () => {
+    const notes = (await run(concurrency)).steps[2]?.notes ?? [];
+    expect(notes[0]).toBe(
+      'Requests started together: 30. Accepted: 10. Refused for insufficient funds: 20.',
+    );
+    expect(notes.join(' ')).toMatch(/6 for HTTP\/1\.1/);
+    expect(notes.join(' ')).toMatch(/bounded by that limit/);
+  });
+
+  it('says so when the browser gave no timings, rather than inventing a number', async () => {
+    const notes = (await run(concurrency)).steps[2]?.notes ?? [];
+    expect(notes[1]).toBe(
+      'The browser did not report timings, so the concurrency actually achieved is unknown.',
+    );
+  });
+
+  it('reports the peak the browser measured, when it measured one', async () => {
+    const api = createLabApi({
+      now: () => 0,
+      getEntriesByType: () =>
+        Array.from({ length: 30 }, (_, i) => ({
+          name: 'http://localhost/api/v1/transactions',
+          initiatorType: 'fetch',
+          startTime: 1,
+          requestStart: 2 + Math.floor(i / 6) * 10,
+          responseEnd: 2 + Math.floor(i / 6) * 10 + 9,
+        })),
+    });
+    const result = await concurrency.run(api, fixedIds());
+    expect(result.steps[2]?.notes[1]).toBe(
+      'Most requests on the network at the same time, as the browser reported: 6.',
+    );
+  });
+
+  it('with a ledger that checks the balance before the others are paid, the overdraft is caught', async () => {
+    sim.faults.staleOverdraftCheck = true;
+    const result = await run(concurrency);
+    expect(result.verdict).toBe('unexpected');
+    const byLabel = Object.fromEntries(failed(result).map((c) => [c.label, c]));
+    expect(byLabel.Accepted).toMatchObject({ expected: '10', actual: '30' });
+    expect(byLabel['Refused for insufficient funds']).toMatchObject({
+      expected: '20',
+      actual: '0',
+    });
+    expect(byLabel['Wallet balance']).toMatchObject({ expected: '0', actual: '-20000' }); // overdrawn by 200.00
   });
 });
 

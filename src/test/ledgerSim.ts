@@ -48,6 +48,12 @@ export interface Faults {
   skipBalanceCheck: boolean;
   /** Lets a transaction be reversed again and again. */
   allowDoubleReversal: boolean;
+  /**
+   * Decides whether an account can pay from the balance it had when the request arrived, not
+   * the one it has when the request is carried out: requests that overlap all see the same
+   * money (the classic check-then-act race).
+   */
+  staleOverdraftCheck: boolean;
 }
 
 export interface LedgerSim {
@@ -125,6 +131,7 @@ export function createLedgerSim(): LedgerSim {
       ignoreKeyReuse: false,
       skipBalanceCheck: false,
       allowDoubleReversal: false,
+      staleOverdraftCheck: false,
     },
     requests: [],
     accountReads: [],
@@ -170,6 +177,7 @@ export function createLedgerSim(): LedgerSim {
   function apply(
     request: S['CreateTransactionRequest'],
     reversesId: string | null,
+    stale?: ReadonlyMap<string, bigint>,
   ): { ok: true; transaction: S['Transaction'] } | { ok: false; response: Response } {
     // The shape of every amount, as ledgerd checks it: a string of digits, 1 to 10^30.
     const badAmounts = request.postings.flatMap((p, i) => {
@@ -273,10 +281,16 @@ export function createLedgerSim(): LedgerSim {
     }
     for (const [accountId, balance] of running) {
       const a = accounts.get(accountId);
+      // With the stale-check fault the decision is made on the balance the account had when
+      // the request arrived: what other requests have paid since is not taken into account.
+      const decided =
+        stale === undefined
+          ? balance
+          : balance - ((a?.balance ?? 0n) - (stale.get(accountId) ?? 0n));
       if (
         a !== undefined &&
         !a.account.allow_negative &&
-        balance < 0n &&
+        decided < 0n &&
         !sim.faults.allowOverdraft
       ) {
         if (sim.faults.applyBeforeRefusing) {
@@ -361,6 +375,20 @@ export function createLedgerSim(): LedgerSim {
     });
   }
 
+  /** Holds requests until no new one has arrived for a moment, then lets them all go. */
+  let waiting: (() => void)[] = [];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const barrier = (): Promise<void> =>
+    new Promise((resolve) => {
+      waiting.push(resolve);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const all = waiting;
+        waiting = [];
+        for (const release of all) release();
+      }, 20);
+    });
+
   function handlers(): HttpHandler[] {
     const guard = async (
       path: string,
@@ -430,7 +458,14 @@ export function createLedgerSim(): LedgerSim {
         const key = request.headers.get('Idempotency-Key');
         const early = await guard('/v1/transactions', key, body);
         if (early) return early;
-        return idempotent('create', key, body, () => apply(body, null));
+        // The race: look at the balances now, wait for the other requests to arrive, then decide.
+        const stale = sim.faults.staleOverdraftCheck
+          ? new Map(
+              body.postings.map((p) => [p.account_id, accounts.get(p.account_id)?.balance ?? 0n]),
+            )
+          : undefined;
+        if (stale !== undefined) await barrier();
+        return idempotent('create', key, body, () => apply(body, null, stale));
       }),
 
       http.get('*/api/v1/transactions/:id', ({ params }) => {

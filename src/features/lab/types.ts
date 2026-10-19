@@ -41,6 +41,12 @@ export interface Exchange {
 /** Sends a request and records it. It does not throw on an HTTP error, only when there is no answer. */
 export interface LabApi {
   send(request: LabRequest): Promise<Exchange>;
+  /**
+   * Runs `work` and reports the most requests that were on the network at once while it ran,
+   * when the browser can tell (undefined otherwise). Browsers send only a few requests to one
+   * host at a time, so this can be far fewer than the number of requests the work started.
+   */
+  observeConcurrency?<T>(work: () => Promise<T>): Promise<{ value: T; peak: number | undefined }>;
 }
 
 /** Names and keys for a run, injectable so tests are deterministic. */
@@ -64,6 +70,8 @@ export interface Step {
   explanation: string;
   exchanges: Exchange[];
   checks: Check[];
+  /** Things observed that are not pass or fail (for example how much concurrency was achieved). */
+  notes: string[];
 }
 
 export type Verdict = 'as-designed' | 'unexpected' | 'could-not-run';

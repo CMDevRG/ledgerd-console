@@ -20,6 +20,7 @@ const step = (...oks: boolean[]): Step => ({
   explanation: 'e',
   exchanges: [],
   checks: oks.map((ok) => check('c', 'a', ok ? 'a' : 'b')),
+  notes: [],
 });
 
 describe('check', () => {

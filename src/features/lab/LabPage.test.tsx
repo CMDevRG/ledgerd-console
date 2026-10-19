@@ -61,7 +61,7 @@ describe('the Failure Lab page', () => {
     expect(overdraftSection()).toBeInTheDocument();
   });
 
-  it('offers the seven scenarios, each with its own run button', async () => {
+  it('offers the eight scenarios, each with its own run button', async () => {
     await open();
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Overdraft is refused and nothing changes',
@@ -71,8 +71,9 @@ describe('the Failure Lab page', () => {
       'An amount sent as a JSON number is refused',
       'Huge amounts are exact, and the limit is enforced',
       'A transaction cannot be reversed twice',
+      'Simultaneous withdrawals never overdraw',
     ]);
-    expect(screen.getAllByRole('button', { name: 'Run this scenario' })).toHaveLength(7);
+    expect(screen.getAllByRole('button', { name: 'Run this scenario' })).toHaveLength(8);
   });
 
   it('lists the scenarios with what each one tries', async () => {
@@ -211,5 +212,57 @@ describe('running a scenario (R9.2 to R9.4)', () => {
     within(overdraftSection()).getByRole('button', { name: 'Run this scenario' }).focus();
     await user.keyboard('{Enter}');
     await within(overdraftSection()).findByText('Behaved as designed');
+  });
+
+  describe('the concurrency scenario', () => {
+    const section = () =>
+      screen.getByRole('region', { name: 'Simultaneous withdrawals never overdraw' });
+
+    async function runConcurrency(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(within(section()).getByRole('button', { name: /^Run/ }));
+      await within(section()).findByText(
+        /Behaved as designed|UNEXPECTED|Could not run/,
+        undefined,
+        { timeout: 20_000 },
+      );
+    }
+
+    it('tucks thirty requests into one disclosure, with the count of accepted and refused', async () => {
+      const user = userEvent.setup();
+      const { container } = await open();
+      await runConcurrency(user);
+      expect(within(section()).getByRole('status')).toHaveTextContent('Behaved as designed');
+      const summary = within(section()).getByText(
+        /30 requests \(10 answered with success, 20 with a refusal\)/,
+      );
+      const group = summary.closest('details');
+      if (group === null) throw new Error('no group');
+      expect(group).not.toHaveAttribute('open');
+      await user.click(summary);
+      expect(within(group).getAllByText(/^Request \d+:$/)).toHaveLength(30);
+      await expectNoAccessibilityViolations(container);
+    }, 30_000);
+
+    it('shows what was observed, including the browser limit', async () => {
+      const user = userEvent.setup();
+      await open();
+      await runConcurrency(user);
+      const observed = within(section()).getByRole('heading', { name: 'Observed' }).parentElement;
+      if (observed === null) throw new Error('no notes');
+      expect(observed).toHaveTextContent(
+        'Requests started together: 30. Accepted: 10. Refused for insufficient funds: 20.',
+      );
+      expect(observed).toHaveTextContent('6 for HTTP/1.1');
+    }, 30_000);
+
+    it('shows an overdraft prominently when the ledger lets the race through', async () => {
+      sim.faults.staleOverdraftCheck = true;
+      const user = userEvent.setup();
+      await open();
+      await runConcurrency(user);
+      expect(within(section()).getByRole('alert')).toHaveTextContent('UNEXPECTED');
+      const failedRows = within(section()).getAllByText('Failed');
+      expect(failedRows.length).toBeGreaterThanOrEqual(3);
+    }, 30_000);
   });
 });

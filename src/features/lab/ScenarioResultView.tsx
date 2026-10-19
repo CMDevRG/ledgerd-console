@@ -1,5 +1,6 @@
 import { Table, Td, Th } from '../../ui/Table';
 import { ExchangeView } from './ExchangeView';
+import type { Exchange } from './types';
 import type { ScenarioResult, Step } from './types';
 
 /**
@@ -70,9 +71,17 @@ function StepView({ step, n }: { step: Step; n: number }) {
         Step {n}: {step.title}
       </h3>
       <p className="max-w-prose text-sm">{step.explanation}</p>
-      {step.exchanges.map((exchange, i) => (
-        <ExchangeView key={i} exchange={exchange} n={i + 1} />
-      ))}
+      <Exchanges exchanges={step.exchanges} />
+      {step.notes.length === 0 ? null : (
+        <div className="flex flex-col gap-1 rounded-md border border-slate-400 p-3 text-sm dark:border-slate-500">
+          <h4 className="font-semibold">Observed</h4>
+          <ul className="list-disc pl-5">
+            {step.notes.map((note, i) => (
+              <li key={i}>{note}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {step.checks.length === 0 ? null : (
         <Table caption={`Checks of step ${String(n)}`} hideCaption>
           <thead>
@@ -110,5 +119,25 @@ function StepView({ step, n }: { step: Step; n: number }) {
         </Table>
       )}
     </section>
+  );
+}
+
+/** Up to this many requests are listed straight away; more are tucked into one disclosure. */
+const LISTED = 6;
+
+function Exchanges({ exchanges }: { exchanges: Exchange[] }) {
+  const all = exchanges.map((exchange, i) => (
+    <ExchangeView key={i} exchange={exchange} n={i + 1} />
+  ));
+  if (exchanges.length <= LISTED) return <>{all}</>;
+  const refused = exchanges.filter((e) => e.status >= 400).length;
+  return (
+    <details className="rounded-md border border-slate-300 p-2 dark:border-slate-600">
+      <summary className="cursor-pointer text-sm font-medium">
+        {exchanges.length} requests ({exchanges.length - refused} answered with success, {refused}{' '}
+        with a refusal): open to see each one
+      </summary>
+      <div className="mt-2 flex flex-col gap-2">{all}</div>
+    </details>
   );
 }

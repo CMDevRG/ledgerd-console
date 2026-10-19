@@ -77,7 +77,7 @@ Console tasks that need them say so.
 - [x] 16. Scenarios b to g
   - One pure function each (a is done), with a test against the fake ledger and a test with a deliberately wrong fake proving each check can fail.
   - _R9.1_
-- [ ] 17. Scenario h (concurrency)
+- [x] 17. Scenario h (concurrency)
   - Parallel requests, in-flight counter, the explanation about browser limits.
   - _R9.1, R9.5_
 - [ ] 18. Reconciliation page

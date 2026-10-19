@@ -100,6 +100,51 @@ describe('createLabApi', () => {
   });
 });
 
+describe('observeConcurrency', () => {
+  const resource = (requestStart: number, responseEnd: number) => ({
+    name: 'http://localhost/api/v1/transactions',
+    initiatorType: 'fetch',
+    startTime: 11,
+    requestStart,
+    responseEnd,
+  });
+
+  it("runs the work, and reports the most requests on the network at once from the browser's timings", async () => {
+    const timing = {
+      now: () => 10,
+      getEntriesByType: () => [
+        resource(12, 30),
+        resource(12, 31),
+        resource(30, 50),
+        resource(31, 51),
+      ],
+    };
+    const { value, peak } = (await createLabApi(timing).observeConcurrency?.(() =>
+      Promise.resolve('done'),
+    )) ?? { value: '', peak: -1 };
+    expect(value).toBe('done');
+    expect(peak).toBe(2);
+  });
+
+  it('says it does not know when the browser has no timings', async () => {
+    const none = await createLabApi({ now: () => 0 }).observeConcurrency?.(() =>
+      Promise.resolve(1),
+    );
+    expect(none).toEqual({ value: 1, peak: undefined });
+    const empty = await createLabApi({
+      now: () => 0,
+      getEntriesByType: () => [],
+    }).observeConcurrency?.(() => Promise.resolve(2));
+    expect(empty).toEqual({ value: 2, peak: undefined });
+  });
+
+  it('passes on a failure of the work', async () => {
+    await expect(
+      createLabApi().observeConcurrency?.(() => Promise.reject(new Error('no answer'))),
+    ).rejects.toThrow('no answer');
+  });
+});
+
 describe('what an exchange can reveal (R9.3: never the API key)', () => {
   it('only lists headers by name to keep, none of which can hold a credential', () => {
     const all = [...SHOWN_REQUEST_HEADERS, ...SHOWN_RESPONSE_HEADERS] as string[];

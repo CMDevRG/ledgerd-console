@@ -20,6 +20,10 @@ export const check = (label: string, expected: string, actual: string, ok?: bool
 /** What a step can do: send requests (recorded in the step) and say what it checked. */
 export interface StepContext {
   send(request: LabRequest): Promise<Exchange>;
+  /** Adds an observation to the step. */
+  note(text: string): void;
+  /** Runs `work` and tells the most requests that were on the network at once, if known. */
+  observe<T>(work: () => Promise<T>): Promise<{ value: T; peak: number | undefined }>;
 }
 
 /**
@@ -44,12 +48,20 @@ export class Run {
   ): Promise<void> {
     if (this.failure !== undefined) return;
     const exchanges: Exchange[] = [];
+    const notes: string[] = [];
     const ctx: StepContext = {
       send: async (request) => {
         const exchange = await this.api.send(request);
         exchanges.push(exchange);
         return exchange;
       },
+      note: (text) => {
+        notes.push(text);
+      },
+      observe: async (work) =>
+        this.api.observeConcurrency
+          ? this.api.observeConcurrency(work)
+          : { value: await work(), peak: undefined },
     };
     let checks: Check[] = [];
     try {
@@ -60,7 +72,7 @@ export class Run {
           ? error.message
           : 'The request could not be sent.';
     }
-    this.steps.push({ title, explanation, exchanges, checks });
+    this.steps.push({ title, explanation, exchanges, checks, notes });
   }
 
   finish(id: ScenarioId): ScenarioResult {
