@@ -5,6 +5,7 @@ import type { Config } from './config';
 import type { Logger } from './logger';
 import { problemResponse } from './problem';
 import { matchRoute } from './routes';
+import { hasBody } from './security';
 
 /** The only response headers relayed to the browser; everything else ledgerd sends is dropped. */
 const RESPONSE_HEADERS_TO_RELAY = [
@@ -56,8 +57,7 @@ export function forward(options: ForwardOptions) {
       'X-Request-Id': c.get('requestId'),
     });
     const contentType = c.req.header('Content-Type');
-    if (contentType !== undefined && c.req.raw.body !== null)
-      headers.set('Content-Type', contentType);
+    if (contentType !== undefined && hasBody(c.req.raw)) headers.set('Content-Type', contentType);
     const idempotencyKey = c.req.header('Idempotency-Key');
     if (idempotencyKey !== undefined) headers.set('Idempotency-Key', idempotencyKey);
 
@@ -68,7 +68,7 @@ export function forward(options: ForwardOptions) {
       response = await fetch(upstream, {
         method: c.req.method,
         headers,
-        ...(c.req.raw.body !== null ? { body: await c.req.arrayBuffer() } : {}),
+        ...(hasBody(c.req.raw) ? { body: await c.req.arrayBuffer() } : {}),
         redirect: 'manual', // never follow a redirect with the key attached
         signal: AbortSignal.timeout(options.timeoutMs ?? match.route.timeoutMs),
       });

@@ -1,0 +1,19 @@
+# Nothing the image build does not need, and nothing that must never be in it.
+.git
+node_modules
+dist
+dist-server
+coverage
+playwright-report
+test-results
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.idea
+.vscode
+.DS_Store

@@ -86,7 +86,7 @@ function encodeURIComponentSafe(value: string): string {
 describe('logging', () => {
   it('writes one line per request with the fields an operator needs', async () => {
     const { app, log } = build();
-    await app.request('/healthz?token=do-not-log', {
+    await app.request('/readyz?token=do-not-log', {
       headers: { 'X-Request-Id': 'log-1', Authorization: 'Bearer client-secret' },
     });
     const lines = log.lines();
@@ -96,7 +96,7 @@ describe('logging', () => {
       msg: 'request',
       request_id: 'log-1',
       method: 'GET',
-      path: '/healthz',
+      path: '/readyz',
       status: 200,
     });
     expect(typeof lines[0]?.duration_ms).toBe('number');
@@ -149,6 +149,29 @@ describe('unknown paths', () => {
     expect(await response.json()).toMatchObject({
       type: 'urn:ledgerd-console:error:not_found',
       status: 404,
+    });
+  });
+
+  describe('the access log and the health check', () => {
+    it('records a healthy /healthz at debug level, so the container probe does not fill the log', async () => {
+      const { app, log } = build();
+      await app.request('/healthz');
+      const line = log.lines().find((l) => l.msg === 'request');
+      expect(line).toMatchObject({ path: '/healthz', status: 200, level: 'debug' });
+    });
+
+    it('records everything else, and a failed probe, at info level', async () => {
+      const { app, log } = build(() => Promise.resolve(false));
+      await app.request('/readyz');
+      await app.request('/healthz', { headers: { Host: 'evil.example' } }); // refused: 421
+      const levels = log
+        .lines()
+        .filter((l) => l.msg === 'request')
+        .map((l) => [l.path, l.status, l.level]);
+      expect(levels).toEqual([
+        ['/readyz', 503, 'info'],
+        ['/healthz', 421, 'info'],
+      ]);
     });
   });
 });

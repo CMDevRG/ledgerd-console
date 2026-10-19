@@ -129,6 +129,18 @@ export function crossSiteDefence(allowedOrigins: readonly string[]): Middleware 
   };
 }
 
+/**
+ * Whether the request carries a body. `Request.body` cannot say: when a request arrives over a
+ * socket, the server library gives every POST a body stream, empty or not. The headers do:
+ * a length above zero, or chunked transfer. (A browser's `fetch` of a POST with no body sends
+ * `Content-Length: 0`; a call that has nothing to say, such as a reversal, is not a JSON body.)
+ */
+export function hasBody(request: Request): boolean {
+  const length = request.headers.get('Content-Length');
+  if (length !== null) return !/^\s*0+\s*$/.test(length);
+  return request.headers.has('Transfer-Encoding');
+}
+
 /** Limits the size of a request body and requires JSON when there is one. */
 export function jsonBodyLimit(maxBytes: number): Middleware {
   const limit = bodyLimit({
@@ -144,7 +156,7 @@ export function jsonBodyLimit(maxBytes: number): Middleware {
       ),
   });
   return async (c, next) => {
-    if (c.req.raw.body !== null) {
+    if (hasBody(c.req.raw)) {
       const type = c.req.header('Content-Type')?.toLowerCase().split(';')[0]?.trim();
       if (type !== 'application/json') {
         return problemResponse(

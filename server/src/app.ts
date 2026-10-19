@@ -66,10 +66,14 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.use('*', async (c, next) => {
     const started = performance.now();
     await next();
-    logger.info('request', {
+    const path = new URL(c.req.url).pathname;
+    // The container's health check calls /healthz every few seconds. A line for each would bury
+    // the real ones, so a healthy probe is logged at debug level; a failed one is not hidden.
+    const quiet = path === '/healthz' && c.res.status === 200;
+    logger[quiet ? 'debug' : 'info']('request', {
       request_id: c.get('requestId'),
       method: c.req.method,
-      path: new URL(c.req.url).pathname,
+      path,
       status: c.res.status,
       forwarded: c.get('forwarded') === true,
       duration_ms: Math.round((performance.now() - started) * 1000) / 1000,

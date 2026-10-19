@@ -47,7 +47,7 @@ export function devEnvironment(env: Env): DevEnvironment {
   if (!loaded.ok) {
     const errors = loaded.errors.map((e) =>
       e.startsWith('LEDGERD_API_KEY is required')
-        ? 'LEDGERD_API_KEY is required: put it in .env.local (see .env.example); it is the key of your ledgerd stack'
+        ? 'LEDGERD_API_KEY is required: run `make env` (it is created in .env), or put it in .env.local (see .env.example); it is the key of your ledgerd stack'
         : e,
     );
     return { ok: false, errors };

@@ -8,7 +8,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "node --env-file-if-exists=.env.local --import tsx server/dev/dev.ts",
+    "dev": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx server/dev/dev.ts",
     "build": "tsc --noEmit && vite build && npm run build:server",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p scripts/tsconfig.json",
@@ -20,7 +20,7 @@
     "coverage": "vitest run --coverage",
     "generate:api": "openapi-typescript ${LEDGERD_OPENAPI:-https://raw.githubusercontent.com/CMDevRG/ledgerd/v0.2.0/docs/openapi.yaml} -o src/api/schema.d.ts",
     "check:api": "npm run generate:api --silent && git diff --exit-code -- src/api/schema.d.ts",
-    "verify": "npm run typecheck && npm run check:api-types && npm run check:benchmark && npm run lint && npm run format:check && npm run test && npm run build && npm run check:build",
+    "verify": "npm run typecheck && npm run check:api-types && npm run check:benchmark && npm run check:containers && npm run lint && npm run format:check && npm run test && npm run build && npm run check:build",
     "check:api-types": "tsc --noEmit --ignoreConfig --strict --skipLibCheck false src/api/schema.d.ts",
     "dev:web": "vite",
     "dev:server": "tsx watch server/src/main.ts",
@@ -28,7 +28,8 @@
     "import:k6": "tsx scripts/import-k6.ts",
     "build:server": "tsx scripts/build-server.ts dist-server",
     "check:build": "tsx scripts/check-build.ts",
-    "audit": "npm audit --omit=dev --audit-level=high"
+    "audit": "npm audit --omit=dev --audit-level=high",
+    "check:containers": "tsx scripts/check-containers.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",

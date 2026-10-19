@@ -1,9 +1,10 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -125,4 +126,44 @@ describe('the bundled server', () => {
     expect(code).toBe(2);
     expect(err).toContain('LEDGERD_API_KEY is required');
   }, 30_000);
+
+  it("is checked by the container's health check script: healthy when it answers, unhealthy otherwise", async () => {
+    const port = 20000 + Math.floor(Math.random() * 20000);
+    const server = spawn(process.execPath, [bundle], {
+      cwd: dir,
+      env: { LEDGERD_API_KEY: KEY, CONSOLE_ADDR: `127.0.0.1:${String(port)}`, PATH: '' },
+      stdio: 'ignore',
+    });
+    const script = join(dirname(fileURLToPath(import.meta.url)), '..', 'docker', 'healthcheck.mjs');
+    const probe = (env: Record<string, string>): number | null =>
+      spawnSync(process.execPath, [script], { env: { PATH: '', ...env }, timeout: 10_000 }).status;
+    try {
+      const host = `127.0.0.1:${String(port)}`;
+      for (let i = 0; i < 60; i += 1) {
+        try {
+          await get(port, '/healthz', host);
+          break;
+        } catch {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      }
+      const address = `127.0.0.1:${String(port)}`;
+      // The way the image sets it: the first allowed host is the Host it sends.
+      expect(
+        probe({
+          CONSOLE_ADDR: address,
+          CONSOLE_ALLOWED_HOSTS: `localhost:${String(port)},127.0.0.1:${String(port)}`,
+        }),
+      ).toBe(0);
+      // With no allowed hosts given it falls back to 127.0.0.1 and the port.
+      expect(probe({ CONSOLE_ADDR: address })).toBe(0);
+      // The server refuses a Host it does not serve (421), which is not healthy.
+      expect(probe({ CONSOLE_ADDR: address, CONSOLE_ALLOWED_HOSTS: 'evil.example:1' })).toBe(1);
+    } finally {
+      server.kill('SIGTERM');
+      await once(server, 'exit');
+    }
+    // Nothing listening any more: unhealthy, quickly.
+    expect(probe({ CONSOLE_ADDR: `127.0.0.1:${String(port)}` })).toBe(1);
+  }, 60_000);
 });

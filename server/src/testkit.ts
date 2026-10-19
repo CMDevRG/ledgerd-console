@@ -52,6 +52,21 @@ interface Requestable {
 export function send(app: Requestable, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (!headers.has('Host')) headers.set('Host', HOST);
+  // A client puts the size of its body, or "chunked", in the headers; the server reads them to
+  // tell a body from none. A Request made in a test has neither unless it is added here.
+  if (
+    typeof init.body === 'string' &&
+    !headers.has('Content-Length') &&
+    !headers.has('Transfer-Encoding')
+  ) {
+    headers.set('Content-Length', String(Buffer.byteLength(init.body)));
+  } else if (
+    init.body instanceof ReadableStream &&
+    !headers.has('Content-Length') &&
+    !headers.has('Transfer-Encoding')
+  ) {
+    headers.set('Transfer-Encoding', 'chunked');
+  }
   return Promise.resolve(app.request(path, { ...init, headers }));
 }
 

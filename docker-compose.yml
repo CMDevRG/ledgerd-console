@@ -1,0 +1,91 @@
+# ledgerd and its console, with PostgreSQL.
+#
+#   make up        creates .env with random secrets on first use, then starts everything
+#   make down      stops it (data is kept in the `pgdata` volume)
+#   make smoke     runs a short end-to-end check against the running stack
+#
+# Startup order: postgres (healthy) -> migrate (runs to completion) -> ledgerd (healthy) -> console.
+# ledgerd and its PostgreSQL are the published release images, pinned by tag and by digest.
+name: ledgerd-console
+
+services:
+  postgres:
+    image: ghcr.io/cmdevrg/ledgerd-postgres:0.2.0@sha256:3d3252687aea36fb030b480b08ece7354c339a0a04c6df1989dfc71837b61065
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?run `make env` or copy .env.example to .env}
+      POSTGRES_DB: ledgerd
+      # Read by the role-creation script inside the image.
+      LEDGERD_OWNER_PASSWORD: ${LEDGERD_OWNER_PASSWORD:?run `make env` or copy .env.example to .env}
+      LEDGERD_APP_PASSWORD: ${LEDGERD_APP_PASSWORD:?run `make env` or copy .env.example to .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Over TCP on purpose. While the image initialises the database it runs a temporary server
+      # that listens only on a Unix socket; a check through the socket passes then, and the
+      # migration, started at once, finds the real server not yet listening.
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U postgres -d ledgerd']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: ghcr.io/cmdevrg/ledgerd:0.2.0@sha256:9055f651a83a372aa77d2998a2f892caecb752c395e31e9cfc773e94d1432d56
+    command: ['migrate']
+    environment:
+      LEDGERD_MIGRATE_DATABASE_URL: postgres://ledgerd_owner:${LEDGERD_OWNER_PASSWORD}@postgres:5432/ledgerd?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  ledgerd:
+    image: ghcr.io/cmdevrg/ledgerd:0.2.0@sha256:9055f651a83a372aa77d2998a2f892caecb752c395e31e9cfc773e94d1432d56
+    command: ['serve']
+    environment:
+      LEDGERD_ADDR: ':8085'
+      LEDGERD_DATABASE_URL: postgres://ledgerd_app:${LEDGERD_APP_PASSWORD}@postgres:5432/ledgerd?sslmode=disable
+      LEDGERD_API_KEY: ${LEDGERD_API_KEY:?run `make env` or copy .env.example to .env}
+    ports:
+      # Only this machine. The console reaches ledgerd over the compose network, not through this.
+      - '127.0.0.1:${LEDGERD_PORT:-8085}:8085'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 20s
+
+  console:
+    build:
+      context: .
+      args:
+        VERSION: ${CONSOLE_VERSION:-dev}
+        COMMIT: ${CONSOLE_COMMIT:-unknown}
+    image: ledgerd-console:local
+    environment:
+      LEDGERD_URL: http://ledgerd:8085
+      LEDGERD_API_KEY: ${LEDGERD_API_KEY:?run `make env` or copy .env.example to .env}
+      # The browser reaches the console at the published port, so that is the Host and the
+      # Origin the console must accept (it refuses any other, against DNS rebinding and CSRF).
+      CONSOLE_ALLOWED_HOSTS: localhost:${CONSOLE_PORT:-8787},127.0.0.1:${CONSOLE_PORT:-8787}
+      CONSOLE_ALLOWED_ORIGINS: http://localhost:${CONSOLE_PORT:-8787},http://127.0.0.1:${CONSOLE_PORT:-8787}
+    ports:
+      # Only this machine: the console has no login of its own.
+      - '127.0.0.1:${CONSOLE_PORT:-8787}:8787'
+    depends_on:
+      ledgerd:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+volumes:
+  pgdata:

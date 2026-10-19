@@ -80,6 +80,12 @@ export default tseslint.config(
     rules: { 'jsx-a11y/alt-text': 'off', 'jsx-a11y/label-has-associated-control': 'off' },
   },
 
+  // The container's health check is a plain Node script.
+  {
+    files: ['docker/**/*.mjs'],
+    languageOptions: { globals: globals.node, sourceType: 'module' },
+  },
+
   // Scripts the browser loads as they are (public/), not part of the TypeScript project.
   {
     files: ['public/**/*.js'],

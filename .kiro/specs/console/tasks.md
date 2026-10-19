@@ -92,7 +92,7 @@ Console tasks that need them say so.
 - [x] 20. Build checks
   - Server bundle with esbuild; the canary-key scan of the emitted files; the inline script and style check; `npm audit` gate.
   - _R2.6, R15.4, R15.7_
-- [ ] 21. Container and compose
+- [x] 21. Container and compose
   - Dockerfile (distroless Node, non-root, read-only), `docker-compose.yml` with the pinned ledgerd release images, `make up` creating `.env`, a smoke script.
   - Needs ledgerd 0.2.0 images.
   - _R17.1, R17.3, R17.4_
