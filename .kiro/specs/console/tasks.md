@@ -80,7 +80,7 @@ Console tasks that need them say so.
 - [x] 17. Scenario h (concurrency)
   - Parallel requests, in-flight counter, the explanation about browser limits.
   - _R9.1, R9.5_
-- [ ] 18. Reconciliation page
+- [x] 18. Reconciliation page
   - Run, progress, report, mismatch and chain-break tables, session history and comparison, stale-report protection.
   - _R10_
 - [ ] 19. Benchmark view

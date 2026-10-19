@@ -6,6 +6,7 @@ import {
   getAccount,
   getTransaction,
   listAccounts,
+  reconcile,
   reverseTransaction,
 } from '../api/endpoints';
 import { ApiError } from '../api/problem';
@@ -323,6 +324,87 @@ describe('the ledger sim, used through the real API client', () => {
       const { data } = await createTransaction(body, 'k');
       await reverseTransaction(data.id, 'r1');
       expect((await reverseTransaction(data.id, 'r2')).replayed).toBe(false);
+    });
+  });
+
+  describe('reconciliation', () => {
+    const deposit = async () => {
+      const bank = sim.addAccount({ code: 'bank', allow_negative: true });
+      const wallet = sim.addAccount({
+        code: 'wallet',
+        normal_balance: 'CREDIT',
+        type: 'LIABILITY',
+      });
+      const { data } = await createTransaction(move(wallet.id, bank.id, '10000'), 'k');
+      return { bank, wallet, tx: data };
+    };
+
+    it('finds a consistent ledger consistent, and an empty one too', async () => {
+      expect((await reconcile(false)).data).toMatchObject({
+        ok: true,
+        accounts_checked: 0,
+        mismatches: [],
+        currencies: [],
+      });
+      await deposit();
+      const { data } = await reconcile(true);
+      expect(data).toMatchObject({
+        ok: true,
+        deep: true,
+        accounts_checked: 2,
+        mismatches: [],
+        chain_breaks: [],
+      });
+      expect(data.currencies).toEqual([
+        { currency: 'USD', debits: 10000n, credits: 10000n, balanced: true },
+      ]);
+      expect(sim.reconciliations).toEqual([false, true]);
+    });
+
+    it('finds a stored balance that its postings do not explain', async () => {
+      const { wallet } = await deposit();
+      sim.tamperBalance(wallet.id, 7n);
+      const { data } = await reconcile(false);
+      expect(data.ok).toBe(false);
+      expect(data.mismatches).toEqual([
+        {
+          account_id: wallet.id,
+          code: 'wallet',
+          currency: 'USD',
+          stored: 10007n,
+          expected: 10000n,
+        },
+      ]);
+    });
+
+    it('finds a broken balance chain only when asked to look deeply', async () => {
+      const { bank, tx } = await deposit();
+      const posting = tx.postings.find((p) => p.account_id === bank.id);
+      sim.tamperPosting(posting?.id ?? 0, 999n);
+      const standard = (await reconcile(false)).data;
+      expect(standard.chain_breaks).toEqual([]);
+      expect(standard.ok).toBe(true); // a standard run cannot see it
+      const deep = (await reconcile(true)).data;
+      expect(deep.ok).toBe(false);
+      expect(deep.chain_breaks).toEqual([
+        { posting_id: posting?.id ?? 0, account_id: bank.id, recorded: 999n, expected: 10000n },
+      ]);
+    });
+
+    it('finds debits and credits that differ in a currency', async () => {
+      sim.faults.skipBalanceCheck = true;
+      const a = sim.addAccount({ code: 'a', allow_negative: true });
+      const b = sim.addAccount({ code: 'b', allow_negative: true });
+      const body = move(a.id, b.id, '100');
+      await createTransaction(
+        { postings: [body.postings[0], { ...body.postings[1], amount: '99' }] } as typeof body,
+        'k',
+      );
+      const { data } = await reconcile(false);
+      expect(data.ok).toBe(false);
+      expect(data.currencies).toEqual([
+        { currency: 'USD', debits: 100n, credits: 99n, balanced: false },
+      ]);
     });
   });
 });

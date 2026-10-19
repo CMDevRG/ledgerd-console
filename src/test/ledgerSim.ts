@@ -63,6 +63,14 @@ export interface LedgerSim {
   requests: SimRequest[];
   /** The id of every account read with GET /v1/accounts/{id}, in order. */
   accountReads: string[];
+  /** The `deep` flag of every reconciliation asked for, in order. */
+  reconciliations: boolean[];
+  /** Delay every reconciliation by this many milliseconds. */
+  reconcileDelayMs: number;
+  /** Changes an account's stored balance without a posting: a mismatch for a reconciliation to find. */
+  tamperBalance: (accountId: string, delta: bigint) => void;
+  /** Rewrites the balance-after of a posting: a break in the chain for a deep reconciliation. */
+  tamperPosting: (postingId: number, balanceAfter: bigint) => void;
   /** Creates an account directly (not through the API), e.g. to set a test up. */
   addAccount: (account: Partial<S['Account']> & { code: string }) => S['Account'];
   /** The balance of an account, in minor units. */
@@ -135,6 +143,19 @@ export function createLedgerSim(): LedgerSim {
     },
     requests: [],
     accountReads: [],
+    reconciliations: [],
+    reconcileDelayMs: 0,
+    tamperBalance: (accountId, delta) => {
+      const found = accounts.get(accountId);
+      if (found !== undefined) found.balance += delta;
+    },
+    tamperPosting: (postingId, balanceAfter) => {
+      for (const tx of transactions.values()) {
+        tx.postings = tx.postings.map((p) =>
+          p.id === postingId ? { ...p, balance_after: balanceAfter.toString() } : p,
+        );
+      }
+    },
     delayMs: 0,
     forgetKeys: () => {
       keys.clear();
@@ -375,6 +396,81 @@ export function createLedgerSim(): LedgerSim {
     });
   }
 
+  /** What a reconciliation finds, from the postings and the stored balances. */
+  function reconcile(deep: boolean, n: number): S['ReconciliationReport'] {
+    const postings = [...transactions.values()]
+      .flatMap((t) => t.postings)
+      .sort((a, b) => a.id - b.id);
+    const effect = (accountId: string, p: S['Posting']): bigint => {
+      const sign = p.direction === accounts.get(accountId)?.account.normal_balance ? 1n : -1n;
+      return sign * BigInt(p.amount);
+    };
+
+    const mismatches = [...accounts.values()].flatMap((a) => {
+      const expected = postings
+        .filter((p) => p.account_id === a.account.id)
+        .reduce((sum, p) => sum + effect(a.account.id, p), 0n);
+      return expected === a.balance
+        ? []
+        : [
+            {
+              account_id: a.account.id,
+              code: a.account.code,
+              currency: a.account.currency,
+              stored: a.balance.toString(),
+              expected: expected.toString(),
+            },
+          ];
+    });
+
+    const totals = new Map<string, { debits: bigint; credits: bigint }>();
+    for (const p of postings) {
+      const t = totals.get(p.currency) ?? { debits: 0n, credits: 0n };
+      if (p.direction === 'DEBIT') t.debits += BigInt(p.amount);
+      else t.credits += BigInt(p.amount);
+      totals.set(p.currency, t);
+    }
+    const currencies = [...totals]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([currency, t]) => ({
+        currency,
+        debits: t.debits.toString(),
+        credits: t.credits.toString(),
+        balanced: t.debits === t.credits,
+      }));
+
+    // Each posting's balance must follow from the previous posting of the same account.
+    const chainBreaks: S['ReconciliationReport']['chain_breaks'] = [];
+    if (deep) {
+      for (const a of accounts.values()) {
+        let previous = 0n;
+        for (const p of postings.filter((x) => x.account_id === a.account.id)) {
+          const expected = previous + effect(a.account.id, p);
+          if (expected !== BigInt(p.balance_after)) {
+            chainBreaks.push({
+              posting_id: p.id,
+              account_id: a.account.id,
+              recorded: p.balance_after,
+              expected: expected.toString(),
+            });
+          }
+          previous = BigInt(p.balance_after);
+        }
+      }
+    }
+
+    return {
+      started_at: `2026-10-13T16:00:${String(n % 60).padStart(2, '0')}.000000Z`,
+      deep,
+      ok:
+        mismatches.length === 0 && chainBreaks.length === 0 && currencies.every((c) => c.balanced),
+      accounts_checked: accounts.size,
+      mismatches,
+      currencies,
+      chain_breaks: chainBreaks,
+    };
+  }
+
   /** Holds requests until no new one has arrived for a moment, then lets them all go. */
   let waiting: (() => void)[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -466,6 +562,13 @@ export function createLedgerSim(): LedgerSim {
           : undefined;
         if (stale !== undefined) await barrier();
         return idempotent('create', key, body, () => apply(body, null, stale));
+      }),
+
+      http.post('*/api/v1/reconciliations', async ({ request }) => {
+        const deep = new URL(request.url).searchParams.get('deep') === 'true';
+        sim.reconciliations.push(deep);
+        if (sim.reconcileDelayMs > 0) await new Promise((r) => setTimeout(r, sim.reconcileDelayMs));
+        return HttpResponse.json(reconcile(deep, sim.reconciliations.length));
       }),
 
       http.get('*/api/v1/transactions/:id', ({ params }) => {
