@@ -102,9 +102,10 @@ Console tasks that need them say so.
 - [x] 23. End-to-end: Lab and screenshots
   - Every scenario against the real ledgerd; the screenshot script.
   - _R9, R18.3_
-- [ ] 24. Continuous integration
-  - Workflow with pinned Actions: verify, audit, end-to-end against the compose stack, screenshots as an artifact; Dependabot.
-  - _R16.5_
+- [x] 24. Continuous integration
+  - Workflow with Actions pinned by SHA: verify (with coverage and its floor), audit (also weekly), end-to-end against the compose stack in the same pinned Playwright container as `make e2e`, smoke test, screenshots as an artifact; Dependabot for npm, Actions, Docker and compose. `npm run check:workflows` keeps those rules true.
+  - Coverage floor in `vite.config.ts` (R16.6). The workflow itself can only be run on GitHub once the repository exists; until then it was linted with actionlint and its steps were run locally in the same order.
+  - _R16.5, R16.6_
 - [ ] 25. Documentation
   - README with screenshots and diagrams, the four ADRs, the traceability matrix and its checker.
   - _R16.7, R18_

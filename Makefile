@@ -1,9 +1,9 @@
 # ledgerd-console. `make help` lists the targets.
 .DEFAULT_GOAL := help
-.PHONY: help env up down logs smoke image verify e2e e2e-up e2e-run e2e-down screenshots
+.PHONY: help env up down logs smoke image verify e2e e2e-up e2e-run e2e-down e2e-logs screenshots screenshots-run
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
 env: ## Create .env with random secrets (only if it does not exist)
 	@if [ -f .env ]; then echo ".env already exists; leaving it untouched"; else \
@@ -53,6 +53,11 @@ e2e-down: ## Remove the end-to-end stack and its data
 e2e: e2e-up ## End-to-end tests in a real browser, against a fresh stack (needs Docker)
 	@$(MAKE) --no-print-directory e2e-run; status=$$?; $(MAKE) --no-print-directory e2e-down; exit $$status
 
+screenshots-run: ## Take the screenshots against the stack that e2e-up started
+	@E2E_UID=$$(id -u) E2E_GID=$$(id -g) $(E2E) run --rm e2e npx playwright test --config e2e/screenshots.config.ts
+
 screenshots: e2e-up ## Take the README screenshots (docs/screenshots) from a fresh stack
-	@E2E_UID=$$(id -u) E2E_GID=$$(id -g) $(E2E) run --rm e2e npx playwright test --config e2e/screenshots.config.ts; \
-	  status=$$?; $(MAKE) --no-print-directory e2e-down; exit $$status
+	@$(MAKE) --no-print-directory screenshots-run; status=$$?; $(MAKE) --no-print-directory e2e-down; exit $$status
+
+e2e-logs: ## Print the logs of the end-to-end stack (for a failed CI run)
+	@$(E2E) logs --no-color --tail=200 console ledgerd migrate postgres

@@ -1,0 +1,109 @@
+# Continuous integration (R16.5).
+#
+#   verify  type check, lint, format, the unit and component tests WITH coverage (and its
+#           floor, see vite.config.ts), the production build, and the scans of that build
+#           (no API key in the browser bundle, CSP-clean HTML).
+#   audit   the dependency audit. It also runs weekly, because a new advisory can appear
+#           without any change to this repository.
+#   e2e     the real stack (PostgreSQL, the pinned ledgerd release images, the console) and
+#           the browser tests, run in the same pinned Playwright container as `make e2e`, so
+#           a failure here can be reproduced on a laptop. Then the smoke test and the
+#           screenshots.
+#
+# Every action is pinned to a commit SHA (a tag can be moved; a SHA cannot); the comment
+# after it is the version, and Dependabot reads it to propose updates. `npm run
+# check:workflows` fails the build if any of that stops being true.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+# Nothing in this workflow writes to the repository, so the token may only read it.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Regenerates src/api/schema.d.ts from ledgerd's published OpenAPI file and fails if
+      # the committed copy differs (R16.4). It needs the network, so it is not in `verify`.
+      - run: npm run check:api
+      - run: npm run verify:ci
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: ignore
+          retention-days: 14
+
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm run audit
+
+  e2e:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Start a fresh stack (random secrets, release images of ledgerd)
+        run: make e2e-up
+      - name: Browser tests
+        run: make e2e-run
+      - name: Screenshots
+        run: make screenshots-run
+      - name: Smoke test
+        run: make smoke
+      - name: Logs of the stack
+        if: failure()
+        run: make e2e-logs
+      - name: Remove the stack
+        if: always()
+        run: make e2e-down
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: screenshots
+          path: docs/screenshots
+          if-no-files-found: ignore
+          retention-days: 14

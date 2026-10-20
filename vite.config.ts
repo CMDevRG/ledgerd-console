@@ -51,6 +51,12 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}', 'server/src/**/*.ts'],
       exclude: ['src/api/schema.d.ts', 'src/test/**', 'src/main.tsx', '**/*.test.{ts,tsx}'],
+      reporter: ['text-summary', 'json-summary', 'html'],
+      // The floor below which `npm run coverage` fails (R16.6). Measured when it was set:
+      // statements 96.7 %, branches 93.5 %, functions 95.5 %, lines 96.9 %. The floor sits a
+      // little under that, so a change that leaves a feature untested fails, and ordinary
+      // refactoring does not. Raise it when the numbers rise; never lower it to get a green run.
+      thresholds: { statements: 95, branches: 90, functions: 93, lines: 95 },
     },
   },
 });

@@ -1,0 +1,36 @@
+# Proposes updates for everything that is pinned: npm packages, the GitHub Actions (pinned by
+# SHA, with the version in a comment), the Dockerfile's base images (pinned by digest) and the
+# images in the compose files (pinned by tag and digest).
+#
+# One thing Dependabot cannot know: the Playwright container in docker-compose.e2e.yml must be
+# the same version as @playwright/test in package.json. The two are proposed separately, so
+# merge them together; `npm run check:containers` fails if they differ.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Patch and minor updates in one pull request, so they cost one review, not twenty.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
