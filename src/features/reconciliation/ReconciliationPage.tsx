@@ -207,14 +207,16 @@ function History({
               <Td numeric>{(r.durationMs / 1000).toFixed(1)} s</Td>
               <Td>{r.report.ok ? 'Consistent' : <strong>Problems found</strong>}</Td>
               <Td>
+                {/* The name is the visible word plus a hidden "report N": a name must contain the
+                    text that is seen (WCAG 2.5.3), and "Showing" marks the one on screen. */}
                 <Button
-                  aria-label={`Show report ${String(r.id)}`}
-                  aria-pressed={viewingId === r.id}
+                  aria-current={viewingId === r.id ? 'true' : undefined}
                   onClick={() => {
                     onView(r.id);
                   }}
                 >
-                  {viewingId === r.id ? 'Showing' : 'Show'}
+                  {viewingId === r.id ? 'Showing' : 'Show'}{' '}
+                  <span className="sr-only">report {r.id}</span>
                 </Button>
               </Td>
             </tr>

@@ -424,13 +424,12 @@ describe('the session history and comparison (R10.4)', () => {
     expect(rows[0]).toHaveTextContent('Consistent');
     await user.click(screen.getByRole('button', { name: 'Show report 1' }));
     expect(screen.getByRole('region', { name: 'Report 1' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Show report 1' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('button', { name: 'Showing report 1' })).toHaveAttribute(
+      'aria-current',
       'true',
     );
-    expect(screen.getByRole('button', { name: 'Show report 2' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
+    expect(screen.getByRole('button', { name: 'Show report 2' })).not.toHaveAttribute(
+      'aria-current',
     );
   });
 

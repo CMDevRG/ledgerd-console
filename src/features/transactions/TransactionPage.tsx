@@ -88,7 +88,7 @@ function TransactionView({ transaction }: { transaction: Transaction }) {
         <h2 id="details" className="text-lg font-semibold">
           Details
         </h2>
-        <dl className="grid max-w-2xl grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
+        <dl className="grid max-w-2xl grid-cols-[max-content_minmax(0,1fr)] [&_dd]:[overflow-wrap:anywhere] gap-x-6 gap-y-2 text-sm">
           <dt className="font-medium text-slate-700 dark:text-slate-300">Id</dt>
           <dd>
             <CopyText value={transaction.id} label="transaction id" head={12} tail={6} />

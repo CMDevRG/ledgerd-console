@@ -18,10 +18,13 @@ export function Table({ caption, hideCaption = false, children }: TableProps) {
     <div
       role="region"
       aria-labelledby={id}
+      // `relative` makes this the containing block of the screen-reader-only text inside the
+      // table (it is positioned absolutely), so it scrolls with the table and is clipped by it,
+      // instead of reaching out and making the whole page scroll sideways.
       // The container must be focusable for keyboard users to scroll it (WCAG 2.1.1).
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
-      className="max-w-full overflow-x-auto rounded-md border border-slate-300 dark:border-slate-600"
+      className="relative max-w-full overflow-x-auto rounded-md border border-slate-300 dark:border-slate-600"
     >
       <table className="w-full border-collapse text-left text-sm">
         <caption

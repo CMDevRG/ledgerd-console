@@ -96,8 +96,8 @@ Console tasks that need them say so.
   - Dockerfile (distroless Node, non-root, read-only), `docker-compose.yml` with the pinned ledgerd release images, `make up` creating `.env`, a smoke script.
   - Needs ledgerd 0.2.0 images.
   - _R17.1, R17.3, R17.4_
-- [ ] 22. End-to-end suite
-  - Playwright (system libraries installed with `sudo`), axe on every page, flows: accounts, deposit, overdraft, replay, reversal, as-of, paging, reconciliation.
+- [x] 22. End-to-end suite
+  - Playwright, run in the pinned Playwright container (`make e2e`) because the browser's system libraries need `sudo`, which an unattended session does not have; CI installs them with `--with-deps`. axe on every page, flows: accounts, deposit, overdraft, replay, reversal, as-of, paging, reconciliation.
   - _R16.3, R13.7_
 - [ ] 23. End-to-end: Lab and screenshots
   - Every scenario against the real ledgerd; the screenshot script.

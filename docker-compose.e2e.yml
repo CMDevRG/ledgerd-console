@@ -1,0 +1,31 @@
+# Adds the end-to-end test runner to the stack. Used by `make e2e`:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml --profile e2e ...
+#
+# The browser runs in a container that shares the console container's network, so for the
+# browser the console is `localhost:8787`: the address a person uses, which browsers treat as a
+# trustworthy origin (some security headers are ignored on any other plain-http address).
+services:
+  e2e:
+    # Playwright and its browsers, at the same version as the @playwright/test in package.json.
+    image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
+    network_mode: service:console
+    working_dir: /work
+    # Run as the person who started it, so what the tests write (reports, screenshots) is theirs.
+    user: ${E2E_UID:-1000}:${E2E_GID:-1000}
+    init: true
+    ipc: host
+    volumes:
+      - .:/work
+    environment:
+      HOME: /tmp
+      E2E_BASE_URL: http://localhost:8787
+      E2E_NO_SANDBOX: '1'
+      E2E_GREP: ${E2E_GREP:-}
+      LEDGERD_API_KEY: ${LEDGERD_API_KEY:?run `make env` first}
+      CI: ${CI:-}
+    depends_on:
+      console:
+        condition: service_healthy
+    command: ['npx', 'playwright', 'test', '--config', 'e2e/playwright.config.ts']
+    profiles: [e2e]

@@ -10,7 +10,7 @@ function Headers({ headers }: { headers: Record<string, string> }) {
   const entries = Object.entries(headers);
   if (entries.length === 0) return <p className="text-xs">No headers of interest.</p>;
   return (
-    <dl className="grid grid-cols-[max-content_1fr] gap-x-3 font-mono text-xs">
+    <dl className="grid grid-cols-[max-content_minmax(0,1fr)] [&_dd]:[overflow-wrap:anywhere] gap-x-3 font-mono text-xs">
       {entries.map(([name, value]) => (
         <div key={name} className="contents">
           <dt>{name}:</dt>

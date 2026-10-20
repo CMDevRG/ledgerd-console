@@ -97,7 +97,7 @@ function Summary({ account }: { account: Account }) {
       <p className="text-3xl">
         <Amount minor={account.balance} currency={account.currency} />
       </p>
-      <dl className="grid max-w-2xl grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
+      <dl className="grid max-w-2xl grid-cols-[max-content_minmax(0,1fr)] [&_dd]:[overflow-wrap:anywhere] gap-x-6 gap-y-2 text-sm">
         <Row term="Code">
           <code className="font-mono">{account.code}</code>
         </Row>

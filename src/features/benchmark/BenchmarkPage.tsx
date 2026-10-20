@@ -193,7 +193,7 @@ function Results({ data }: { data: Benchmark }) {
         <h2 id="conditions" className="text-lg font-semibold">
           Conditions
         </h2>
-        <dl className="grid max-w-3xl grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
+        <dl className="grid max-w-3xl grid-cols-[max-content_minmax(0,1fr)] [&_dd]:[overflow-wrap:anywhere] gap-x-6 gap-y-2 text-sm">
           <dt className="font-medium text-slate-700 dark:text-slate-300">ledgerd commit</dt>
           <dd>
             <a

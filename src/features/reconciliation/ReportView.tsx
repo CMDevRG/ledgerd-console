@@ -47,7 +47,7 @@ export function ReportView({ report, durationMs }: ReportViewProps) {
         </div>
       )}
 
-      <dl className="grid max-w-xl grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
+      <dl className="grid max-w-xl grid-cols-[max-content_minmax(0,1fr)] [&_dd]:[overflow-wrap:anywhere] gap-x-6 gap-y-1 text-sm">
         <dt className="font-medium text-slate-700 dark:text-slate-300">Kind</dt>
         <dd>{report.deep ? 'Deep' : 'Standard'}</dd>
         <dt className="font-medium text-slate-700 dark:text-slate-300">Started</dt>

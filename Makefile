@@ -1,6 +1,6 @@
 # ledgerd-console. `make help` lists the targets.
 .DEFAULT_GOAL := help
-.PHONY: help env up down logs smoke image verify
+.PHONY: help env up down logs smoke image verify e2e e2e-up e2e-run e2e-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -35,3 +35,20 @@ image: ## Build only the console image
 
 verify: ## Type check, lint, tests, build and the build scans
 	npm run verify
+
+# The tests run in the pinned Playwright container, so no browser or system library is needed on
+# this machine. A fresh stack is started for them, and removed (with its data) afterwards.
+E2E := docker compose -f docker-compose.yml -f docker-compose.e2e.yml --profile e2e
+
+e2e-up: env ## Start a fresh stack for the end-to-end tests
+	@$(E2E) down -v >/dev/null 2>&1 || true
+	$(E2E) up --build --wait --detach console
+
+e2e-run: ## Run the end-to-end tests against the stack that e2e-up started
+	@E2E_UID=$$(id -u) E2E_GID=$$(id -g) $(E2E) run --rm -e E2E_GREP e2e
+
+e2e-down: ## Remove the end-to-end stack and its data
+	@$(E2E) down -v >/dev/null 2>&1 || true
+
+e2e: e2e-up ## End-to-end tests in a real browser, against a fresh stack (needs Docker)
+	@$(MAKE) --no-print-directory e2e-run; status=$$?; $(MAKE) --no-print-directory e2e-down; exit $$status
