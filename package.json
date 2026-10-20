@@ -30,7 +30,8 @@
     "check:build": "tsx scripts/check-build.ts",
     "audit": "npm audit --omit=dev --audit-level=high",
     "check:containers": "tsx scripts/check-containers.ts",
-    "e2e": "playwright test --config e2e/playwright.config.ts"
+    "e2e": "playwright test --config e2e/playwright.config.ts",
+    "screenshots": "playwright test --config e2e/screenshots.config.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",

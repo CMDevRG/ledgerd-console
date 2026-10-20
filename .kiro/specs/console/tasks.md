@@ -99,7 +99,7 @@ Console tasks that need them say so.
 - [x] 22. End-to-end suite
   - Playwright, run in the pinned Playwright container (`make e2e`) because the browser's system libraries need `sudo`, which an unattended session does not have; CI installs them with `--with-deps`. axe on every page, flows: accounts, deposit, overdraft, replay, reversal, as-of, paging, reconciliation.
   - _R16.3, R13.7_
-- [ ] 23. End-to-end: Lab and screenshots
+- [x] 23. End-to-end: Lab and screenshots
   - Every scenario against the real ledgerd; the screenshot script.
   - _R9, R18.3_
 - [ ] 24. Continuous integration
