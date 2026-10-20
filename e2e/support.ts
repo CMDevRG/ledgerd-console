@@ -127,21 +127,26 @@ interface AxeViolation {
   nodes: { target: unknown[]; failureSummary?: string }[];
 }
 
+/** WCAG 2.2 AA (R13.1). The same list as src/test/axe.ts, which this project's tsconfigs keep apart. */
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
+
 /**
- * Runs axe-core in the page, with every rule, colour contrast included (jsdom cannot judge
+ * Runs axe-core in the page, with the rules of WCAG 2.2 AA, colour contrast included (jsdom cannot judge
  * contrast; a real browser can). axe is handed to the page with `evaluate`, which the Content
  * Security Policy does not govern, so the policy stays as it is in production.
  */
 export async function expectAccessible(page: Page, what: string): Promise<void> {
   await page.evaluate(axe.source);
-  const violations = await page.evaluate(async (): Promise<AxeViolation[]> => {
+  const violations = await page.evaluate(async (tags): Promise<AxeViolation[]> => {
     const run = (
       globalThis as unknown as {
-        axe: { run: (c?: unknown) => Promise<{ violations: AxeViolation[] }> };
+        axe: {
+          run: (c: unknown, o: unknown) => Promise<{ violations: AxeViolation[] }>;
+        };
       }
     ).axe.run;
-    return (await run(document)).violations;
-  });
+    return (await run(document, { runOnly: { type: 'tag', values: tags } })).violations;
+  }, AXE_TAGS);
   const report = violations
     .map(
       (v) =>

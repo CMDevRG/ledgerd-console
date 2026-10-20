@@ -1,7 +1,9 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { expectNoAccessibilityViolations } from './axe';
+import axe from 'axe-core';
+
+import { AXE_TAGS, expectNoAccessibilityViolations } from './axe';
 
 describe('the accessibility check', () => {
   it('accepts a labelled form control', async () => {
@@ -33,5 +35,12 @@ describe('the accessibility check', () => {
       </main>,
     );
     await expect(expectNoAccessibilityViolations(container)).rejects.toThrow(/image-alt/);
+  });
+
+  it('checks against WCAG 2.2 AA: every tag names rules, and the 2.2 rules are among them (R13.1)', () => {
+    for (const tag of AXE_TAGS) {
+      expect(axe.getRules([tag]).length, `no rule has the tag ${tag}`).toBeGreaterThan(0);
+    }
+    expect(AXE_TAGS).toContain('wcag22aa');
   });
 });

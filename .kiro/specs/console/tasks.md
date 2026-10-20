@@ -106,8 +106,9 @@ Console tasks that need them say so.
   - Workflow with Actions pinned by SHA: verify (with coverage and its floor), audit (also weekly), end-to-end against the compose stack in the same pinned Playwright container as `make e2e`, smoke test, screenshots as an artifact; Dependabot for npm, Actions, Docker and compose. `npm run check:workflows` keeps those rules true.
   - Coverage floor in `vite.config.ts` (R16.6). The workflow itself can only be run on GitHub once the repository exists; until then it was linted with actionlint and its steps were run locally in the same order.
   - _R16.5, R16.6_
-- [ ] 25. Documentation
-  - README with screenshots and diagrams, the four ADRs, the traceability matrix and its checker.
+- [x] 25. Documentation
+  - README with screenshots of every page and a diagram, four ADRs, the traceability matrix and its checker. `npm run check:docs` keeps the README honest (sections, a screenshot per page and none unused, the ledgerd version, every command and every environment variable); `npm run check:traceability` keeps the matrix honest.
+  - Writing the matrix found gaps, closed with tests: axe now runs the WCAG 2.2 AA rule set explicitly, reduced motion is tested in a real browser, the unmocked-request rule of the test setup is tested, and the CI workflow is checked for the steps R16.5 names.
   - _R16.7, R18_
 - [ ] 26. Final review and release
   - Secrets and personal-data search, TODO search, full clean-clone run, publish `CMDevRG/ledgerd-console`, tag `v0.1.0`.

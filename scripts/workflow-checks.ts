@@ -137,3 +137,62 @@ export function checkPlaywrightVersions(composeE2e: string, packageJson: string)
   }
   return [];
 }
+
+/** What requirement R16.5 says continuous integration must run, as the commands that run it. */
+const REQUIRED_COMMANDS = [
+  'npm run check:api', // the generated API types are current
+  'npm run verify:ci', // types, lint, format, tests with coverage, build and its scans
+  'npm run audit', // known vulnerabilities in production dependencies
+  'make e2e-up', // the real stack, from the pinned ledgerd release images
+  'make e2e-run', // the browser tests against it
+  'make screenshots-run', // the README screenshots, from the same tests' world
+  'make smoke',
+];
+
+/** What `npm run verify:ci` has to include, directly or through the scripts it calls. */
+const REQUIRED_SCRIPTS = [
+  'typecheck',
+  'check:api-types',
+  'lint',
+  'format:check',
+  'coverage',
+  'build',
+  'check:build',
+  'check:workflows',
+  'check:traceability',
+  'check:docs',
+];
+
+function expand(
+  scripts: Record<string, string>,
+  name: string,
+  seen = new Set<string>(),
+): Set<string> {
+  if (seen.has(name)) return seen;
+  seen.add(name);
+  for (const call of (scripts[name] ?? '').matchAll(/npm run ([\w:-]+)/g)) {
+    expand(scripts, call[1] ?? '', seen);
+  }
+  return seen;
+}
+
+export function checkPipeline(workflow: string, packageJson: string, file = 'ci.yml'): Problem[] {
+  const problems: Problem[] = [];
+  const lines = workflow.split('\n').map((l) => l.trim());
+  for (const command of REQUIRED_COMMANDS) {
+    if (!lines.some((l) => l === `- run: ${command}` || l === `run: ${command}`)) {
+      problems.push({ file, message: `the pipeline does not run "${command}"` });
+    }
+  }
+  if (!workflow.includes('path: docs/screenshots')) {
+    problems.push({ file, message: 'the pipeline does not keep the screenshots as an artifact' });
+  }
+  const scripts = (JSON.parse(packageJson) as { scripts: Record<string, string> }).scripts;
+  const included = expand(scripts, 'verify:ci');
+  for (const name of REQUIRED_SCRIPTS) {
+    if (!included.has(name)) {
+      problems.push({ file: 'package.json', message: `"verify:ci" does not include "${name}"` });
+    }
+  }
+  return problems;
+}

@@ -59,3 +59,36 @@ test('display decimals changed in settings change how amounts are written, and o
   await page.getByRole('button', { name: 'Reset USD to the default' }).click();
   await expect(usd).toHaveValue('2');
 });
+
+test('reduced motion: the spinner does not spin and no animation lasts, for a person who asked for less motion', async ({
+  page,
+}) => {
+  // The spinner is on screen only while a request is in flight, so give the page one the same way
+  // the application does: an element with the class the spinner has.
+  const motion = async (): Promise<{ name: string; duration: string; transition: string }> =>
+    page.evaluate(() => {
+      const el = document.createElement('div');
+      el.className = 'motion-safe:animate-spin';
+      el.style.transition = 'opacity 1s';
+      document.body.append(el);
+      const style = getComputedStyle(el);
+      const result = {
+        name: style.animationName,
+        duration: style.animationDuration,
+        transition: style.transitionDuration,
+      };
+      el.remove();
+      return result;
+    });
+
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+  await expect(page.getByText('API ready')).toBeVisible();
+  // The check can fail: with no preference the spinner does spin (so the next result means something).
+  expect(await motion()).toEqual({ name: 'spin', duration: '1s', transition: '1s' });
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const reduced = await motion();
+  expect(reduced.name).toBe('none');
+  expect(Number.parseFloat(reduced.transition)).toBeLessThan(0.001);
+});

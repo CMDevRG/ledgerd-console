@@ -5,7 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
  * They share one ledger and one set of accounts per test, so they run one at a time.
  *
  *   make e2e          runs them in the pinned Playwright container, on the compose network
- *   npm run e2e       runs them with browsers installed on this machine (CI does this)
+ *   npm run e2e       runs them with browsers installed on this machine (npx playwright install chromium)
  *
  * E2E_BASE_URL says where the console is (default: the stack that `make up` starts).
  */

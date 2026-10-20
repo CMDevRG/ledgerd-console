@@ -5,7 +5,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { checkDependabot, checkPlaywrightVersions, checkWorkflow } from './workflow-checks';
+import {
+  checkDependabot,
+  checkPipeline,
+  checkPlaywrightVersions,
+  checkWorkflow,
+} from './workflow-checks';
 
 const dir = '.github/workflows';
 const workflows = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f));
@@ -13,6 +18,7 @@ const workflows = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f));
 const problems = [
   ...(workflows.length === 0 ? [{ file: dir, message: 'has no workflow' }] : []),
   ...workflows.flatMap((f) => checkWorkflow(readFileSync(join(dir, f), 'utf8'), join(dir, f))),
+  ...checkPipeline(readFileSync(join(dir, 'ci.yml'), 'utf8'), readFileSync('package.json', 'utf8')),
   ...checkDependabot(readFileSync('.github/dependabot.yml', 'utf8')),
   ...checkPlaywrightVersions(
     readFileSync('docker-compose.e2e.yml', 'utf8'),

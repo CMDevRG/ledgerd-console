@@ -4,7 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { checkDependabot, checkPlaywrightVersions, checkWorkflow } from './workflow-checks';
+import {
+  checkDependabot,
+  checkPipeline,
+  checkPlaywrightVersions,
+  checkWorkflow,
+} from './workflow-checks';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path: string): string => readFileSync(join(root, path), 'utf8');
@@ -16,6 +21,9 @@ const CHECKOUT = /actions\/checkout@[0-9a-f]{40} # v[\d.]+/;
 describe('the real files follow the rules', () => {
   it('the CI workflow', () => {
     expect(checkWorkflow(ci, 'ci.yml')).toEqual([]);
+  });
+  it('the pipeline runs what R16.5 asks for', () => {
+    expect(checkPipeline(ci, read('package.json'))).toEqual([]);
   });
   it('Dependabot', () => {
     expect(checkDependabot(read('.github/dependabot.yml'))).toEqual([]);
@@ -145,5 +153,57 @@ describe('checkPlaywrightVersions', () => {
   it('rejects a missing @playwright/test', () => {
     const none = pkg.replace('"@playwright/test"', '"@playwright/other"');
     expect(checkPlaywrightVersions(compose, none)[0]?.message).toMatch(/is missing/);
+  });
+});
+
+describe('checkPipeline', () => {
+  const pkg = read('package.json');
+  const messages = (workflow: string, packageJson = pkg): string =>
+    checkPipeline(workflow, packageJson)
+      .map((p) => p.message)
+      .join('\n');
+
+  it.each([
+    ['check:api', 'npm run check:api'],
+    ['verify:ci', 'npm run verify:ci'],
+    ['audit', 'npm run audit'],
+    ['e2e-up', 'make e2e-up'],
+    ['e2e-run', 'make e2e-run'],
+    ['screenshots-run', 'make screenshots-run'],
+    ['smoke', 'make smoke'],
+  ])('requires %s', (_name, command) => {
+    const without = ci.replace(new RegExp(`run: ${command}\\n`), 'run: echo skipped\n');
+    expect(without).not.toBe(ci);
+    expect(messages(without)).toContain(`does not run "${command}"`);
+  });
+
+  it('requires the screenshots to be kept', () => {
+    const without = ci.replace('path: docs/screenshots', 'path: nowhere');
+    expect(without).not.toBe(ci);
+    expect(messages(without)).toMatch(/screenshots as an artifact/);
+  });
+
+  it.each([
+    'typecheck',
+    'lint',
+    'format:check',
+    'coverage',
+    'build',
+    'check:build',
+    'check:traceability',
+    'check:docs',
+  ])('requires verify:ci to include %s, even through another script', (name) => {
+    const without = pkg.replaceAll(`npm run ${name}`, 'npm run nothing');
+    expect(without).not.toBe(pkg);
+    expect(messages(ci, without)).toContain(`"verify:ci" does not include "${name}"`);
+  });
+
+  it('follows scripts through the scripts they call, and survives a loop', () => {
+    const looping = JSON.stringify({
+      scripts: { 'verify:ci': 'npm run a', a: 'npm run b', b: 'npm run a && npm run lint' },
+    });
+    const text = messages(ci, looping);
+    expect(text).not.toContain('"lint"');
+    expect(text).toContain('"typecheck"');
   });
 });

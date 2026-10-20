@@ -36,6 +36,7 @@ const shot = async (
 };
 
 let wallet = '';
+let multiPosting = '';
 
 /** Creates an account, or finds it if an earlier (failed) run already made it. */
 async function ensureAccount(api: APIRequestContext, seed: AccountSeed): Promise<Account> {
@@ -82,7 +83,7 @@ test.beforeAll(async ({ playwright, baseURL }) => {
     });
   }
   // One transaction that touches the wallet twice: its first posting is an intermediate step.
-  await api.post('/api/v1/transactions', {
+  const multi = await api.post('/api/v1/transactions', {
     headers: { 'X-Ledgerd-Console': '1', 'Idempotency-Key': 'shots-multi' },
     data: {
       description: 'Fee and refund in one transaction',
@@ -93,6 +94,7 @@ test.beforeAll(async ({ playwright, baseURL }) => {
       ],
     },
   });
+  multiPosting = ((await multi.json()) as { id: string }).id;
   await api.dispose();
 });
 
@@ -114,6 +116,28 @@ test('accounts', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'demo-wallet' })).toBeVisible();
   await settled(page);
   await shot(page, 'accounts');
+});
+
+test('a transaction, with the button that reverses it', async ({ page }) => {
+  await page.goto(`/transactions/${multiPosting}`);
+  await expect(page.getByRole('heading', { level: 1, name: /^Transaction / })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reverse' })).toBeVisible();
+  await settled(page);
+  await shot(page, 'transaction');
+});
+
+test('looking a transaction up by its id', async ({ page }) => {
+  await page.goto('/transactions');
+  await expect(page.getByRole('heading', { level: 1, name: 'Transactions' })).toBeVisible();
+  await settled(page);
+  await shot(page, 'transaction-lookup');
+});
+
+test('settings', async ({ page }) => {
+  await page.goto('/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await settled(page);
+  await shot(page, 'settings');
 });
 
 test('account detail with its history', async ({ page }) => {
