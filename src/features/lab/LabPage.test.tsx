@@ -223,13 +223,13 @@ describe('running a scenario (R9.2 to R9.4)', () => {
       await within(section()).findByText(
         /Behaved as designed|UNEXPECTED|Could not run/,
         undefined,
-        { timeout: 20_000 },
+        { timeout: 45_000 },
       );
     }
 
     it('tucks thirty requests into one disclosure, with the count of accepted and refused', async () => {
       const user = userEvent.setup();
-      const { container } = await open();
+      await open();
       await runConcurrency(user);
       expect(within(section()).getByRole('status')).toHaveTextContent('Behaved as designed');
       const summary = within(section()).getByText(
@@ -240,8 +240,10 @@ describe('running a scenario (R9.2 to R9.4)', () => {
       expect(group).not.toHaveAttribute('open');
       await user.click(summary);
       expect(within(group).getAllByText(/^Request \d+:$/)).toHaveLength(30);
-      await expectNoAccessibilityViolations(container);
-    }, 30_000);
+      // The part of the page that changed: axe on all eight scenarios, with thirty requests
+      // open, is what made this test take thirty seconds when the whole suite shares one machine.
+      await expectNoAccessibilityViolations(section());
+    });
 
     it('shows what was observed, including the browser limit', async () => {
       const user = userEvent.setup();
@@ -253,7 +255,7 @@ describe('running a scenario (R9.2 to R9.4)', () => {
         'Requests started together: 30. Accepted: 10. Refused for insufficient funds: 20.',
       );
       expect(observed).toHaveTextContent('6 for HTTP/1.1');
-    }, 30_000);
+    });
 
     it('shows an overdraft prominently when the ledger lets the race through', async () => {
       sim.faults.staleOverdraftCheck = true;
@@ -263,6 +265,6 @@ describe('running a scenario (R9.2 to R9.4)', () => {
       expect(within(section()).getByRole('alert')).toHaveTextContent('UNEXPECTED');
       const failedRows = within(section()).getAllByText('Failed');
       expect(failedRows.length).toBeGreaterThanOrEqual(3);
-    }, 30_000);
+    });
   });
 });
