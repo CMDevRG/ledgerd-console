@@ -1,6 +1,6 @@
 {
   "name": "ledgerd-console",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "A web console for ledgerd: explore accounts, move money, and watch the ledger prove itself.",
   "type": "module",
