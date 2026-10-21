@@ -283,3 +283,7 @@ data/           the benchmark data and how it was produced
 docs/           architecture decision records, the traceability matrix, screenshots
 .kiro/specs/    requirements, design and tasks
 ```
+
+## License
+
+[MIT](LICENSE).
