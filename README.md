@@ -143,22 +143,22 @@ ledger stores whole minor units and does not know them. Details in
 
 ## Commands
 
-| Command                      | What it does                                                                                                           |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `make up` / `down` / `logs`  | Start, stop and follow the compose stack                                                                               |
-| `make smoke`                 | 17 checks through the running console                                                                                  |
-| `make e2e`                   | The browser tests, in a pinned Playwright container, against a fresh stack that is removed afterwards (needs Docker)   |
-| `make screenshots`           | Takes `docs/screenshots` the same way                                                                                  |
-| `npm run dev`                | Development server with hot reload                                                                                     |
-| `npm run verify`             | Everything that needs no network and no Docker: types, generated-types check, lint, format, tests, build and its scans |
-| `npm run verify:ci`          | The same, with coverage and its floor; what CI runs                                                                    |
-| `npm test`                   | Unit and component tests (the API is mocked; an unmocked request fails the test)                                       |
-| `npm run coverage`           | The tests with coverage; fails below the floor                                                                         |
-| `npm run e2e`                | The browser tests with browsers installed on this machine, against a stack started with `make up`                      |
-| `npm run check:api`          | Regenerates the API types and fails if the committed file is out of date (needs the network)                           |
-| `npm run audit`              | Known vulnerabilities in production dependencies (needs the network)                                                   |
-| `npm run check:traceability` | Fails if the [traceability matrix](docs/traceability.md) names a test that does not exist or leaves a criterion out    |
-| `npm run import:k6`          | Turns the output of ledgerd's benchmark into `data/benchmark.json` ([how](data/README.md))                             |
+| Command                      | What it does                                                                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `make up` / `down` / `logs`  | Start, stop and follow the compose stack                                                                                                |
+| `make smoke`                 | 17 checks through the running console                                                                                                   |
+| `make e2e`                   | The browser tests, in a pinned Playwright container, against a fresh stack that is removed afterwards (needs Docker, and `npm ci` once) |
+| `make screenshots`           | Takes `docs/screenshots` the same way                                                                                                   |
+| `npm run dev`                | Development server with hot reload                                                                                                      |
+| `npm run verify`             | Everything that needs no network and no Docker: types, generated-types check, lint, format, tests, build and its scans                  |
+| `npm run verify:ci`          | The same, with coverage and its floor; what CI runs                                                                                     |
+| `npm test`                   | Unit and component tests (the API is mocked; an unmocked request fails the test)                                                        |
+| `npm run coverage`           | The tests with coverage; fails below the floor                                                                                          |
+| `npm run e2e`                | The browser tests with browsers installed on this machine, against a stack started with `make up`                                       |
+| `npm run check:api`          | Regenerates the API types and fails if the committed file is out of date (needs the network)                                            |
+| `npm run audit`              | Known vulnerabilities in production dependencies (needs the network)                                                                    |
+| `npm run check:traceability` | Fails if the [traceability matrix](docs/traceability.md) names a test that does not exist or leaves a criterion out                     |
+| `npm run import:k6`          | Turns the output of ledgerd's benchmark into `data/benchmark.json` ([how](data/README.md))                                              |
 
 ## Configuration
 

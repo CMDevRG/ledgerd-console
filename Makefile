@@ -45,6 +45,7 @@ e2e-up: env ## Start a fresh stack for the end-to-end tests
 	$(E2E) up --build --wait --detach console
 
 e2e-run: ## Run the end-to-end tests against the stack that e2e-up started
+	@test -d node_modules/@playwright/test || { echo 'run `npm ci` first: the tests import @playwright/test from node_modules' >&2; exit 1; }
 	@E2E_UID=$$(id -u) E2E_GID=$$(id -g) $(E2E) run --rm -e E2E_GREP e2e
 
 e2e-down: ## Remove the end-to-end stack and its data

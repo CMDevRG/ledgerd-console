@@ -177,6 +177,15 @@ describe('checkPipeline', () => {
     expect(messages(without)).toContain(`does not run "${command}"`);
   });
 
+  it('requires the e2e job to install the dependencies its test files import', () => {
+    // The first of the two is the verify job's; take the one in the e2e job away.
+    const e2eJob = ci.slice(ci.indexOf('  e2e:'));
+    const broken = ci.replace(e2eJob, e2eJob.replace(/ {6}- run: npm ci --ignore-scripts\n/, ''));
+    expect(broken).not.toBe(ci);
+    expect(messages(broken)).toMatch(/e2e job does not run "npm ci"/);
+    expect(messages(ci)).not.toMatch(/e2e job/);
+  });
+
   it('requires the screenshots to be kept', () => {
     const without = ci.replace('path: docs/screenshots', 'path: nowhere');
     expect(without).not.toBe(ci);

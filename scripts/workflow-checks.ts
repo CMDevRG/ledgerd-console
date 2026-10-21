@@ -184,6 +184,15 @@ export function checkPipeline(workflow: string, packageJson: string, file = 'ci.
       problems.push({ file, message: `the pipeline does not run "${command}"` });
     }
   }
+  // The browser is in a container, but the test files import @playwright/test from node_modules:
+  // the job that runs them must install it (this failed on the first run on GitHub).
+  const e2e = jobs(workflow.split('\n')).find((job) => job.name === 'e2e');
+  if (!e2e?.lines.some((l) => /^\s*-?\s*run: npm ci\b/.test(l))) {
+    problems.push({
+      file,
+      message: 'the e2e job does not run "npm ci" (the tests import node_modules)',
+    });
+  }
   if (!workflow.includes('path: docs/screenshots')) {
     problems.push({ file, message: 'the pipeline does not keep the screenshots as an artifact' });
   }

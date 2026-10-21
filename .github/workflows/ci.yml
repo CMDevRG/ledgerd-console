@@ -44,7 +44,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      # Install scripts of dependencies are not needed to build or test, so they do not run.
+      - run: npm ci --ignore-scripts
       # Regenerates src/api/schema.d.ts from ledgerd's published OpenAPI file and fails if
       # the committed copy differs (R16.4). It needs the network, so it is not in `verify`.
       - run: npm run check:api
@@ -77,6 +78,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The browser runs in a container, but it runs the test files of this repository, and those
+      # import @playwright/test from node_modules.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --ignore-scripts
       - name: Start a fresh stack (random secrets, release images of ledgerd)
         run: make e2e-up
       - name: Browser tests
