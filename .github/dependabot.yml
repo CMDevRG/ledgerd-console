@@ -16,6 +16,17 @@ updates:
       # Patch and minor updates in one pull request, so they cost one review, not twenty.
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Major versions held back on purpose; the README says why ("Dependency choices"). Take
+      # one off this list when the tool that blocks it supports the new version.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/js'
+        update-types: ['version-update:semver-major']
+      - dependency-name: jsdom
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /
@@ -29,6 +40,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The runtime is Node 22 (see "Dependency choices" in the README).
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: docker-compose
     directory: /

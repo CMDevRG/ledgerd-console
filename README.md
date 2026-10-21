@@ -243,6 +243,20 @@ The API types are generated from ledgerd's `docs/openapi.yaml` at a pinned relea
    the contract, and the allow-list test fails if an endpoint was added or removed.
 4. `make e2e` against the new images, and update the version in this README.
 
+## Dependency choices
+
+Versions are pinned exactly (`.npmrc` has `save-exact`), and `engine-strict` refuses unsupported
+Node versions. A few major versions are held back on purpose, and Dependabot is told not to
+propose them:
+
+- **TypeScript 6, not 7:** `typescript-eslint` supports TypeScript below 6.1.
+- **ESLint 9, not 10:** `eslint-plugin-jsx-a11y` does not yet declare support for 10.
+- **jsdom 29, not 30:** 30 needs Node 22.22.2 or newer.
+- **Node 22:** the engine, the build image and the distroless runtime image are all Node 22.
+- `openapi-typescript` declares `typescript@^5`; an `overrides` entry in `package.json` lets it
+  use 6, and `npm run check:api-types` compiles the generated file with TypeScript 6 (library
+  checking on) to prove it works.
+
 ## Limitations
 
 - **No login.** Anyone who can reach the console server can use the ledger through it, which is
