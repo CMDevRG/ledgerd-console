@@ -110,8 +110,9 @@ Console tasks that need them say so.
   - README with screenshots of every page and a diagram, four ADRs, the traceability matrix and its checker. `npm run check:docs` keeps the README honest (sections, a screenshot per page and none unused, the ledgerd version, every command and every environment variable); `npm run check:traceability` keeps the matrix honest.
   - Writing the matrix found gaps, closed with tests: axe now runs the WCAG 2.2 AA rule set explicitly, reduced motion is tested in a real browser, the unmocked-request rule of the test setup is tested, and the CI workflow is checked for the steps R16.5 names.
   - _R16.7, R18_
-- [ ] 26. Final review and release
-  - Secrets and personal-data search, TODO search, full clean-clone run, publish `CMDevRG/ledgerd-console`, tag `v0.1.0`.
+- [x] 26. Final review and release
+  - Secrets and personal-data search (files and history), TODO search, a full run from a clean clone, publish `CMDevRG/ledgerd-console`, tag `v0.1.0`.
+  - The clean clone found two timing weaknesses in the tests (an explicit 30 s timeout that overrode the suite's, and a one-second wait for lazily loaded pages that is too short on a cold cache); the first run on GitHub found that the end-to-end job did not install the dependencies its test files import. All three are fixed, and the last is now checked by `npm run check:workflows`.
 
 ## Ideas for later (not v1)
 
