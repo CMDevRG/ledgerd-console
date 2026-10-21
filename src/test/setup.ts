@@ -4,9 +4,12 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 
 import { server } from './server';
 
-// The first test to open a lazily loaded page waits for its code to be transformed, which can
-// take longer than the default one second when the whole suite is running.
-configure({ asyncUtilTimeout: 8000 });
+// The first test to open a lazily loaded page waits for its code to be transformed. In a clean
+// checkout nothing is cached, and with the whole suite sharing a few cores that took more than
+// eight seconds (twice, in two clean clones), where the default is one. This is only how long a
+// test waits for something that does appear; a test that fails still fails, a little later. It
+// stays under the 60 seconds a test is given.
+configure({ asyncUtilTimeout: 25_000 });
 
 // jsdom has no matchMedia. By default the system is light and never changes; a test that needs
 // otherwise replaces window.matchMedia itself.
