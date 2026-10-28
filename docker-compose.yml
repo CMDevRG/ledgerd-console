@@ -10,7 +10,7 @@ name: ledgerd-console
 
 services:
   postgres:
-    image: ghcr.io/cmdevrg/ledgerd-postgres:0.2.0@sha256:3d3252687aea36fb030b480b08ece7354c339a0a04c6df1989dfc71837b61065
+    image: ghcr.io/cmdevrg/ledgerd-postgres:0.2.1@sha256:732ef80225511fb79793c9b2762451fd89e9a7fbbb8aeb465097a37230fd2efe
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?run `make env` or copy .env.example to .env}
