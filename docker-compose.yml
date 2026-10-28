@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
 
   migrate:
-    image: ghcr.io/cmdevrg/ledgerd:0.2.0@sha256:9055f651a83a372aa77d2998a2f892caecb752c395e31e9cfc773e94d1432d56
+    image: ghcr.io/cmdevrg/ledgerd:0.2.1@sha256:5459169a0d7e7d7284f40a4d1751d31784de07b1f80b7aac6879a07b5981d228
     command: ['migrate']
     environment:
       LEDGERD_MIGRATE_DATABASE_URL: postgres://ledgerd_owner:${LEDGERD_OWNER_PASSWORD}@postgres:5432/ledgerd?sslmode=disable
@@ -41,7 +41,7 @@ services:
     restart: 'no'
 
   ledgerd:
-    image: ghcr.io/cmdevrg/ledgerd:0.2.0@sha256:9055f651a83a372aa77d2998a2f892caecb752c395e31e9cfc773e94d1432d56
+    image: ghcr.io/cmdevrg/ledgerd:0.2.1@sha256:5459169a0d7e7d7284f40a4d1751d31784de07b1f80b7aac6879a07b5981d228
     command: ['serve']
     environment:
       LEDGERD_ADDR: ':8085'
